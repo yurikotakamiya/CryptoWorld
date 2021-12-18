@@ -4,9 +4,22 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.cw</groupId>
+    <groupId>org.crypto-world</groupId>
     <artifactId>CryptoWorld</artifactId>
+    <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
+    <modules>
+        <module>CryptoWorldFeedHandler</module>
+        <module>CryptoWorldCommon</module>
+    </modules>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.crypto-world</groupId>
+            <artifactId>CryptoWorldPrivate</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
