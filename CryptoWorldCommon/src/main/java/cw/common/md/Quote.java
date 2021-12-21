@@ -6,15 +6,16 @@ import net.openhft.chronicle.values.MaxUtf8Length;
 import net.openhft.chronicle.values.Values;
 
 public interface Quote extends Byteable {
-    static BytesStore getNativeReference() {
+    static Quote getNativeObject() {
         Quote quote = Values.newNativeReference(Quote.class);
         BytesStore store = BytesStore.nativeStoreWithFixedCapacity(quote.maxSize());
-        return store;
+        quote.bytesStore(store, 0, quote.maxSize());
+        return quote;
     }
 
-    CharSequence getSymbol();
+    CharSequence getTradingPair();
 
-    void setSymbol(@MaxUtf8Length(12) CharSequence symbol);
+    void setTradingPair(@MaxUtf8Length(12) CharSequence tradingPair);
 
     double getBidPrice();
 
