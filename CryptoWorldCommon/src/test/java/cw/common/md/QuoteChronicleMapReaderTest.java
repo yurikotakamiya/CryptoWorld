@@ -6,14 +6,11 @@ import net.openhft.chronicle.map.ChronicleMapBuilder;
 import java.io.File;
 
 public class QuoteChronicleMapReaderTest {
-    private static final String BTC_USDT = "BTCUSDT";
-    private static final String ETH_USDT = "ETHUSDT";
-
     public static void main(String[] args) throws Exception {
-        ChronicleMap<CharSequence, Quote> map = ChronicleMapBuilder
-                .of(CharSequence.class, Quote.class)
+        ChronicleMap<TradingPair, Quote> map = ChronicleMapBuilder
+                .of(TradingPair.class, Quote.class)
                 .name("market_data_map")
-                .averageKey(ETH_USDT)
+                .averageKey(TradingPair.ETHUSDT)
                 .entries(10)
                 .createPersistedTo(new File("/tmp/market_data.dat"));
 
@@ -22,8 +19,8 @@ public class QuoteChronicleMapReaderTest {
         Quote q2 = Quote.getNativeObject();
 
         while (true) {
-            q1 = map.getUsing(BTC_USDT, q1);
-            q2 = map.getUsing(ETH_USDT, q2);
+            q1 = map.getUsing(TradingPair.BTCUSDT, q1);
+            q2 = map.getUsing(TradingPair.ETHUSDT, q2);
 
             // Interval for writing is much shorter than reading and this tests data does not corrupt in the middle of reads
             // System.out.println(q1.getTradingPair() + " " + q1.getBidSize() + " " + q1.getAskSize() + " " + q1.getBidPrice() + " " + q1.getAskPrice());

@@ -2,7 +2,7 @@ package cw.common.md;
 
 import net.openhft.chronicle.bytes.Byteable;
 import net.openhft.chronicle.bytes.BytesStore;
-import net.openhft.chronicle.values.MaxUtf8Length;
+import net.openhft.chronicle.values.NotNull;
 import net.openhft.chronicle.values.Values;
 
 public interface Quote extends Byteable {
@@ -13,9 +13,9 @@ public interface Quote extends Byteable {
         return quote;
     }
 
-    CharSequence getTradingPair();
+    TradingPair getTradingPair();
 
-    void setTradingPair(@MaxUtf8Length(12) CharSequence tradingPair);
+    void setTradingPair(@NotNull TradingPair tradingPair);
 
     double getBidPrice();
 
