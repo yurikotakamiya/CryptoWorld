@@ -2,19 +2,20 @@ package cw.common.md;
 
 import net.openhft.chronicle.bytes.Byteable;
 import net.openhft.chronicle.bytes.BytesStore;
-import net.openhft.chronicle.values.MaxUtf8Length;
+import net.openhft.chronicle.values.NotNull;
 import net.openhft.chronicle.values.Values;
 
 public interface Quote extends Byteable {
-    static BytesStore getNativeReference() {
+    static Quote getNativeObject() {
         Quote quote = Values.newNativeReference(Quote.class);
         BytesStore store = BytesStore.nativeStoreWithFixedCapacity(quote.maxSize());
-        return store;
+        quote.bytesStore(store, 0, quote.maxSize());
+        return quote;
     }
 
-    CharSequence getSymbol();
+    TradingPair getTradingPair();
 
-    void setSymbol(@MaxUtf8Length(12) CharSequence symbol);
+    void setTradingPair(@NotNull TradingPair tradingPair);
 
     double getBidPrice();
 
