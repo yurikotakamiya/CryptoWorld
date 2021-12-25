@@ -16,44 +16,33 @@ public class QuoteChronicleMapWriterTest {
 
         double seq = 0;
 
-        // Create a reference and allocate a ByteStore to use as Quote 1
-        Quote q1 = Quote.getNativeObject();
-        q1.setTradingPair(TradingPair.BTCUSDT);
-        q1.setBidPrice(seq + 0.01);
-        q1.setAskPrice(seq + 0.02);
-        q1.setBidSize(seq);
-        q1.setAskSize(seq);
-
-        // Create another pair of reference and ByteStore to use as Quote 2
-        Quote q2 = Quote.getNativeObject();
-        q2.setTradingPair(TradingPair.ETHUSDT);
-        q2.setBidPrice(seq + 0.11);
-        q2.setAskPrice(seq + 0.22);
-        q2.setBidSize(seq);
-        q2.setAskSize(seq);
+        // Create a reference and allocate a ByteStore to use as Quote
+        Quote q = Quote.getNativeObject();
 
         while (true) {
             // Be sure to use the same instance of the String to populate the TradingPair
-            q1.setTradingPair(TradingPair.BTCUSDT);
-            q1.setBidPrice(seq + 0.01);
-            q1.setAskPrice(seq + 0.02);
-            q1.setBidSize(seq);
-            q1.setAskSize(seq);
-
-            // Be sure to use the same instance of the String to populate the TradingPair
-            q2.setTradingPair(TradingPair.ETHUSDT);
-            q2.setBidPrice(seq + 0.11);
-            q2.setAskPrice(seq + 0.22);
-            q2.setBidSize(seq);
-            q2.setAskSize(seq);
+            q.setTradingPair(TradingPair.BTCUSDT);
+            q.setBidPrice(seq + 0.01);
+            q.setAskPrice(seq + 0.02);
+            q.setBidSize(seq);
+            q.setAskSize(seq);
 
             // Populate quotes in the map
-            map.put(q1.getTradingPair(), q1);
-            map.put(q2.getTradingPair(), q2);
+            map.put(q.getTradingPair(), q);
+
+            // Be sure to use the same instance of the String to populate the TradingPair
+            q.setTradingPair(TradingPair.ETHUSDT);
+            q.setBidPrice(seq + 0.11);
+            q.setAskPrice(seq + 0.22);
+            q.setBidSize(seq);
+            q.setAskSize(seq);
+
+            // Populate quotes in the map
+            map.put(q.getTradingPair(), q);
 
             // Testing whether get would allocate new objects on heap and to avoid it, be sure to use getUsing
-            q1 = map.getUsing(q1.getTradingPair(), q1);
-            q2 = map.getUsing(q2.getTradingPair(), q2);
+            q = map.getUsing(q.getTradingPair(), q);
+            q = map.getUsing(q.getTradingPair(), q);
 
             seq++;
 
