@@ -1,10 +1,13 @@
 package cw.feedhandler;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
 public class MdWebSocketClient extends WebSocketClient {
-    AbstractWebSocketMarketDataHandler webSocketMarketDataHandler;
+    private static final Logger LOGGER = LogManager.getLogger(MdWebSocketClient.class.getSimpleName());
+    private AbstractWebSocketMarketDataHandler webSocketMarketDataHandler;
 
     public MdWebSocketClient(AbstractWebSocketMarketDataHandler webSocketMarketDataHandler) {
         super(webSocketMarketDataHandler.uri);
@@ -14,10 +17,8 @@ public class MdWebSocketClient extends WebSocketClient {
 
     @Override
     public void onOpen(ServerHandshake serverHandshake) {
+        LOGGER.info("Connection opened.");
         this.webSocketMarketDataHandler.subscribe();
-
-        // TODO - replace with log
-        System.out.println("Connection opened.");
     }
 
     @Override
@@ -29,13 +30,11 @@ public class MdWebSocketClient extends WebSocketClient {
 
     @Override
     public void onClose(int i, String s, boolean b) {
-        // TODO - replace with log
-        System.out.println("Connection closed.");
+        LOGGER.info("Connection closed.");
     }
 
     @Override
     public void onError(Exception e) {
-        // TODO - replace with log
-        System.out.println("Error occurred.");
+        LOGGER.error("Error occurred.", e);
     }
 }

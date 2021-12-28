@@ -4,6 +4,8 @@ import cw.common.md.Exchange;
 import cw.common.md.Quote;
 import cw.common.md.TradingPair;
 import net.openhft.chronicle.map.ChronicleMap;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.java_websocket.client.WebSocketClient;
 
 import java.net.URI;
@@ -12,6 +14,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public abstract class AbstractWebSocketMarketDataHandler implements Runnable {
     protected WebSocketClient webSocketClient;
+    protected Logger logger;
     protected URI uri;
     protected Map<String, TradingPair> topicToTradingPair;
     protected ChronicleMap<TradingPair, Quote> chronicleMap;
@@ -39,14 +42,14 @@ public abstract class AbstractWebSocketMarketDataHandler implements Runnable {
         connect();
 
         while (true) {
-            try {
-                String s = this.queue.poll();
-                if (s != null) {
+            String s = this.queue.poll();
+
+            if (s != null) {
+                try {
                     processMessage(s);
+                } catch (Exception e) {
+                    this.logger.error(new ParameterizedMessage("Exception occurred while handling message {}.", s), e);
                 }
-            } catch (Exception e) {
-                // TODO - log
-                e.printStackTrace();
             }
         }
     }
@@ -66,6 +69,7 @@ public abstract class AbstractWebSocketMarketDataHandler implements Runnable {
     }
 
     protected void validate() throws Exception {
+        if (this.logger == null) throw new Exception("No logger has been created.");
         if (this.topicToTradingPair.isEmpty()) throw new Exception("No topics to subscribe to.");
     }
 }

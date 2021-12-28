@@ -9,6 +9,7 @@ import cw.common.md.TradingPair;
 import cw.feedhandler.AbstractWebSocketMarketDataHandler;
 import cwp.db.dynamodb.DynamoDbUtil;
 import net.openhft.chronicle.map.ChronicleMapBuilder;
+import org.apache.logging.log4j.LogManager;
 import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
 
 import java.io.File;
@@ -28,6 +29,7 @@ public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDa
     public BinanceWebSocketMarketDataHandler() throws Exception {
         super();
 
+        this.logger = LogManager.getLogger(BinanceWebSocketMarketDataHandler.class.getSimpleName());
         this.uri = new URI(getWebSocketEndpoint());
         this.topicToTradingPair = generateTopicToTradingPair(DynamoDbUtil.getMarketDataTopics(getExchange().getExchangeName()));
         String marketDataMap = DynamoDbUtil.getMarketDataMap(Exchange.BINANCE.getExchangeName(), EnvUtil.ENV.getEnvName());
@@ -74,10 +76,11 @@ public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDa
             SUBSCRIBE_STRING_BUILDER.append(topic);
             SUBSCRIBE_STRING_BUILDER.append(SUBSCRIBE_SUFFIX);
 
-            this.webSocketClient.send(SUBSCRIBE_STRING_BUILDER.toString());
+            String request = SUBSCRIBE_STRING_BUILDER.toString();
+            this.webSocketClient.send(request);
             SUBSCRIBE_STRING_BUILDER.setLength(SUBSCRIBE_PREFIX.length());
 
-            // TODO - log
+            this.logger.info("Subscribed to {}.", request);
         }
     }
 
