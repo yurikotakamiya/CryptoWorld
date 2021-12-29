@@ -13,13 +13,13 @@ public class FeedHandlerServer {
         this.webSocketMarketDataHandlers.add(new BinanceWebSocketMarketDataHandler());
     }
 
-    private void start() {
+    private void connect() {
         for (AbstractWebSocketMarketDataHandler webSocketMarketDataHandler : this.webSocketMarketDataHandlers) {
-            new Thread(webSocketMarketDataHandler).start();
+            webSocketMarketDataHandler.connect();
         }
     }
 
     public static void main(String[] args) throws Exception {
-        new FeedHandlerServer().start();
+        new FeedHandlerServer().connect();
     }
 }

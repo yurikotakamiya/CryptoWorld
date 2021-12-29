@@ -5,25 +5,21 @@ import cw.common.md.Quote;
 import cw.common.md.TradingPair;
 import net.openhft.chronicle.map.ChronicleMap;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.java_websocket.client.WebSocketClient;
 
 import java.net.URI;
 import java.util.Map;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
-public abstract class AbstractWebSocketMarketDataHandler implements Runnable {
+public abstract class AbstractWebSocketMarketDataHandler {
     protected WebSocketClient webSocketClient;
     protected Logger logger;
     protected URI uri;
     protected Map<String, TradingPair> topicToTradingPair;
     protected ChronicleMap<TradingPair, Quote> chronicleMap;
 
-    private final ConcurrentLinkedQueue<String> queue;
     protected final Quote quoteNativeReference;
 
     public AbstractWebSocketMarketDataHandler() {
-        this.queue = new ConcurrentLinkedQueue<>();
         this.quoteNativeReference = Quote.getNativeObject();
     }
 
@@ -36,27 +32,6 @@ public abstract class AbstractWebSocketMarketDataHandler implements Runnable {
     protected abstract void subscribe();
 
     protected abstract void processMessage(String message);
-
-    @Override
-    public void run() {
-        connect();
-
-        while (true) {
-            String s = this.queue.poll();
-
-            if (s != null) {
-                try {
-                    processMessage(s);
-                } catch (Exception e) {
-                    this.logger.error(new ParameterizedMessage("Exception occurred while handling message {}.", s), e);
-                }
-            }
-        }
-    }
-
-    public void enqueueMessage(String message) {
-        this.queue.add(message);
-    }
 
     protected void connect() {
         this.webSocketClient = new MdWebSocketClient(this);

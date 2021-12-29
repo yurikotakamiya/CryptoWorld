@@ -86,10 +86,7 @@ public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDa
 
     @Override
     protected void processMessage(String message) {
-        JsonParser.Next next = this.jsonParser.parse(message);
-        while (next != null) {
-            next = next.next();
-        }
+        this.jsonParser.parse(message);
         this.jsonParser.eoj();
 
         String stream = this.quoteListener.stream.toString();
