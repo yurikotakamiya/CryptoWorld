@@ -16,10 +16,7 @@ public class BinanceQuoteJsonParserListenerTest {
         BinanceQuoteJsonParserListener listener = new BinanceQuoteJsonParserListener();
         parser.setListener(listener);
 
-        JsonParser.Next next = parser.parse(s1);
-        while (next != null) {
-            next = next.next();
-        }
+        parser.parse(s1);
         parser.eoj();
 
         System.out.println(listener.stream.toString());
@@ -29,10 +26,7 @@ public class BinanceQuoteJsonParserListenerTest {
         System.out.println(listener.askPrice);
         System.out.println(listener.askSize);
 
-        next = parser.parse(s2);
-        while (next != null) {
-            next = next.next();
-        }
+        parser.parse(s2);
         parser.eoj();
 
         System.out.println(listener.stream.toString());
@@ -42,10 +36,7 @@ public class BinanceQuoteJsonParserListenerTest {
         System.out.println(listener.askPrice);
         System.out.println(listener.askSize);
 
-        next = parser.parse(s3);
-        while (next != null) {
-            next = next.next();
-        }
+        parser.parse(s3);
         parser.eoj();
 
         System.out.println(listener.stream.toString());
@@ -55,10 +46,7 @@ public class BinanceQuoteJsonParserListenerTest {
         System.out.println(listener.askPrice);
         System.out.println(listener.askSize);
 
-        next = parser.parse(s4);
-        while (next != null) {
-            next = next.next();
-        }
+        parser.parse(s4);
         parser.eoj();
 
         System.out.println(listener.stream.toString());
@@ -68,10 +56,7 @@ public class BinanceQuoteJsonParserListenerTest {
         System.out.println(listener.askPrice);
         System.out.println(listener.askSize);
 
-        next = parser.parse(s5);
-        while (next != null) {
-            next = next.next();
-        }
+        parser.parse(s5);
         parser.eoj();
 
         System.out.println(listener.stream.toString());
@@ -81,10 +66,7 @@ public class BinanceQuoteJsonParserListenerTest {
         System.out.println(listener.askPrice);
         System.out.println(listener.askSize);
 
-        next = parser.parse(s6);
-        while (next != null) {
-            next = next.next();
-        }
+        parser.parse(s6);
         parser.eoj();
 
         System.out.println(listener.stream.toString());

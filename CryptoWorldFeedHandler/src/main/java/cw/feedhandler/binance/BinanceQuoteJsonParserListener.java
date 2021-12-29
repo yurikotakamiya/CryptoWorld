@@ -52,7 +52,6 @@ public class BinanceQuoteJsonParserListener extends JsonParserListenerAdaptor {
         if (this.foundLastUpdateId) {
             this.lastUpdateId = number.mantissa();
             this.foundLastUpdateId = false;
-            return false;
         }
 
         return true;
@@ -62,23 +61,18 @@ public class BinanceQuoteJsonParserListener extends JsonParserListenerAdaptor {
     public boolean onStringValue(CharSequence data) {
         if (this.stream.length() == 0) {
             this.stream.append(data);
-            return false;
         } else if (this.foundBids[0]) {
             this.bidPrice = Double.parseDouble(data.toString());
             this.foundBids[0] = false;
-            return false;
         } else if (this.foundBids[1]) {
             this.bidSize = Double.parseDouble(data.toString());
             this.foundBids[1] = false;
-            return false;
         } else if (this.foundAsks[0]) {
             this.askPrice = Double.parseDouble(data.toString());
             this.foundAsks[0] = false;
-            return false;
         } else if (this.foundAsks[1]) {
             this.askSize = Double.parseDouble(data.toString());
             this.foundAsks[1] = false;
-            return false;
         }
 
         return true;
