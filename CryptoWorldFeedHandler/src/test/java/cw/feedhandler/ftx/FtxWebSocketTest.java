@@ -35,14 +35,14 @@ public class FtxWebSocketTest {
         Thread.sleep(3000);
 
         // Subscribe to market data
-        String request = "{\"op\": \"subscribe\", \"channel\": \"ticker\",\n \"market\": \"BTC-PERP\"\n}";
+        String request = "{\"op\": \"subscribe\", \"channel\": \"ticker\",\n \"market\": \"ETH-PERP\"\n}";
         webSocketClient.send(request);
 
         // Listen to market data for 10 seconds
         Thread.sleep(10000);
 
         // Unsubscribe from market data
-        request = "{\"op\": \"unsubscribe\", \"channel\": \"ticker\"\n,\n \"market\": \"BTC-PERP\"\n}";
+        request = "{\"op\": \"unsubscribe\", \"channel\": \"ticker\"\n,\n \"market\": \"ETH-PERP\"\n}";
         webSocketClient.send(request);
 
         // Close the web socket connection
