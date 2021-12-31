@@ -9,7 +9,11 @@ public enum TradingPair {
             Exchange.KUCOIN, "BTC-USDT")),
     ETHUSDT(Map.of(
             Exchange.BINANCE, "ethusdt",
-            Exchange.KUCOIN, "ETH-USDT"));
+            Exchange.KUCOIN, "ETH-USDT")),
+    BTCPERP(Map.of(
+            Exchange.FTX, "BTC-PERP")),
+    ETHPERP(Map.of(
+            Exchange.FTX, "ETH-PERP"));
 
     public static final Map<Exchange, Map<String, TradingPair>> EXCHANGE_TO_SYMBOL_TO_TRADING_PAIR;
 

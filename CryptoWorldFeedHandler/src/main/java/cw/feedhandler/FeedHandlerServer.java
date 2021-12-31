@@ -1,6 +1,7 @@
 package cw.feedhandler;
 
 import cw.feedhandler.binance.BinanceWebSocketMarketDataHandler;
+import cw.feedhandler.ftx.FtxWebSocketMarketDataHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,7 @@ public class FeedHandlerServer {
     private FeedHandlerServer() throws Exception {
         this.webSocketMarketDataHandlers = new ArrayList<>();
         this.webSocketMarketDataHandlers.add(new BinanceWebSocketMarketDataHandler());
+        this.webSocketMarketDataHandlers.add(new FtxWebSocketMarketDataHandler());
     }
 
     private void connect() {

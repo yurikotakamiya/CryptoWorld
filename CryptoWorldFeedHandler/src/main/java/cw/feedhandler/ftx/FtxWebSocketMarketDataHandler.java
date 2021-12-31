@@ -1,12 +1,12 @@
-package cw.feedhandler.binance;
+package cw.feedhandler.ftx;
 
-import cw.common.env.EnvUtil;
-import cw.common.json.FlyweightStringBuilder;
 import cw.common.json.JsonParser;
 import cw.common.md.Exchange;
-import cw.common.md.Quote;
 import cw.common.md.TradingPair;
 import cw.feedhandler.AbstractWebSocketMarketDataHandler;
+import cw.common.env.EnvUtil;
+import cw.common.json.FlyweightStringBuilder;
+import cw.common.md.Quote;
 import cwp.db.dynamodb.DynamoDbUtil;
 import net.openhft.chronicle.map.ChronicleMapBuilder;
 import org.apache.logging.log4j.LogManager;
@@ -14,34 +14,33 @@ import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
 
 import java.io.File;
 import java.net.URI;
-import java.util.HashMap;
 import java.util.Map;
 
-public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDataHandler {
-    private static final String SUBSCRIBE_PREFIX = "{\"method\": \"SUBSCRIBE\", \"params\": [\"";
-    private static final String SUBSCRIBE_SUFFIX = "\"], \"id\": 1}"; // id doesn't have to be unique per session
+public class FtxWebSocketMarketDataHandler extends AbstractWebSocketMarketDataHandler {
+    private static final String SUBSCRIBE_PREFIX = "{\"op\": \"subscribe\", \"channel\": \"ticker\", \"market\": \"";
+    private static final String SUBSCRIBE_SUFFIX = "\", \"id\": 1}"; // id doesn't have to be unique per session
     private static final StringBuilder SUBSCRIBE_STRING_BUILDER = new StringBuilder(SUBSCRIBE_PREFIX);
 
-    private final ObjectLongHashMap<String> streamToLastUpdateId;
-    private final BinanceQuoteJsonParserListener quoteListener;
+    private final ObjectLongHashMap<String> marketToTime;
+    private final FtxQuoteJsonParserListener quoteListener;
     private final JsonParser jsonParser;
 
-    public BinanceWebSocketMarketDataHandler() throws Exception {
+    public FtxWebSocketMarketDataHandler() throws Exception {
         super();
 
-        this.logger = LogManager.getLogger(BinanceWebSocketMarketDataHandler.class.getSimpleName());
+        this.logger = LogManager.getLogger(FtxWebSocketMarketDataHandler.class.getSimpleName());
         this.uri = new URI(getWebSocketEndpoint());
         this.topicToTradingPair = generateTopicToTradingPair(DynamoDbUtil.getMarketDataTopics(getExchange().getExchangeName()));
         String marketDataMap = DynamoDbUtil.getMarketDataMap(getExchange().getExchangeName(), EnvUtil.ENV.getEnvName());
         this.chronicleMap = ChronicleMapBuilder
                 .of(TradingPair.class, Quote.class)
                 .name(marketDataMap)
-                .averageKey(TradingPair.BTCUSDT)
+                .averageKey(TradingPair.ETHPERP)
                 .entries(10)
                 .createPersistedTo(new File(marketDataMap));
 
-        this.streamToLastUpdateId = new ObjectLongHashMap<>();
-        this.quoteListener = new BinanceQuoteJsonParserListener();
+        this.marketToTime = new ObjectLongHashMap<>();
+        this.quoteListener = new FtxQuoteJsonParserListener();
         this.jsonParser = new JsonParser(new FlyweightStringBuilder());
         this.jsonParser.setListener(this.quoteListener);
 
@@ -50,28 +49,21 @@ public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDa
 
     @Override
     protected String getWebSocketEndpoint() {
-        return "wss://stream.binance.com:9443/stream";
+        return "wss://ftx.com/ws/";
     }
 
     @Override
     protected Exchange getExchange() {
-        return Exchange.BINANCE;
+        return Exchange.FTX;
     }
 
     @Override
     protected Map<String, TradingPair> generateTopicToTradingPair(String[] topics) {
-        Map<String, TradingPair> map = new HashMap<>();
-
-        for (String topic : topics) {
-            String symbol = topic.substring(0, topic.indexOf("@"));
-            map.put(topic, TradingPair.EXCHANGE_TO_SYMBOL_TO_TRADING_PAIR.get(getExchange()).get(symbol));
-        }
-
-        return map;
+        return TradingPair.EXCHANGE_TO_SYMBOL_TO_TRADING_PAIR.get(getExchange());
     }
 
     @Override
-    public void subscribe() {
+    protected void subscribe() {
         for (String topic : this.topicToTradingPair.keySet()) {
             SUBSCRIBE_STRING_BUILDER.append(topic);
             SUBSCRIBE_STRING_BUILDER.append(SUBSCRIBE_SUFFIX);
@@ -89,13 +81,13 @@ public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDa
         this.jsonParser.parse(message);
         this.jsonParser.eoj();
 
-        String stream = this.quoteListener.stream.toString();
-        long lastUpdateId = this.streamToLastUpdateId.get(stream);
+        String market = this.quoteListener.market;
+        long time = this.marketToTime.get(market);
 
-        if (this.quoteListener.lastUpdateId > lastUpdateId) {
-            this.streamToLastUpdateId.put(stream, this.quoteListener.lastUpdateId);
+        if (this.quoteListener.time > time) {
+            this.marketToTime.put(market, this.quoteListener.time);
 
-            TradingPair tradingPair = this.topicToTradingPair.get(stream);
+            TradingPair tradingPair = this.topicToTradingPair.get(market);
             if (tradingPair == null) return;
 
             this.quoteNativeReference.setTradingPair(tradingPair);

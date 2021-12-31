@@ -2,7 +2,8 @@ package cw.common.md;
 
 public enum Exchange {
     BINANCE("binance"),
-    KUCOIN("kucoin");
+    KUCOIN("kucoin"),
+    FTX("ftx");
 
     private final String exchangeName;
 
