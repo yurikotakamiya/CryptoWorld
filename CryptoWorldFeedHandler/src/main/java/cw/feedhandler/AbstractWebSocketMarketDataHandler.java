@@ -23,7 +23,7 @@ public abstract class AbstractWebSocketMarketDataHandler {
         this.quoteNativeReference = Quote.getNativeObject();
     }
 
-    protected abstract String getWebSocketEndpoint();
+    protected abstract String getWebSocketEndpoint() throws Exception;
 
     protected abstract Exchange getExchange();
 

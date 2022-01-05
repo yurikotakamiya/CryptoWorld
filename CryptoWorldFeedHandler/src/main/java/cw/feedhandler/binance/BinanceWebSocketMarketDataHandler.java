@@ -19,7 +19,7 @@ import java.util.Map;
 
 public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDataHandler {
     private static final String SUBSCRIBE_PREFIX = "{\"method\": \"SUBSCRIBE\", \"params\": [\"";
-    private static final String SUBSCRIBE_SUFFIX = "\"], \"id\": 1}"; // id doesn't have to be unique per session
+    private static final String SUBSCRIBE_SUFFIX = "\"], \"id\": 1}";
     private static final StringBuilder SUBSCRIBE_STRING_BUILDER = new StringBuilder(SUBSCRIBE_PREFIX);
 
     private final ObjectLongHashMap<String> streamToLastUpdateId;

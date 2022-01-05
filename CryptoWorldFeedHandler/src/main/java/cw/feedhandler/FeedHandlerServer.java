@@ -2,6 +2,7 @@ package cw.feedhandler;
 
 import cw.feedhandler.binance.BinanceWebSocketMarketDataHandler;
 import cw.feedhandler.ftx.FtxWebSocketMarketDataHandler;
+import cw.feedhandler.kucoin.KucoinWebSocketMarketDataHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +14,7 @@ public class FeedHandlerServer {
         this.webSocketMarketDataHandlers = new ArrayList<>();
         this.webSocketMarketDataHandlers.add(new BinanceWebSocketMarketDataHandler());
         this.webSocketMarketDataHandlers.add(new FtxWebSocketMarketDataHandler());
+        this.webSocketMarketDataHandlers.add(new KucoinWebSocketMarketDataHandler());
     }
 
     private void connect() {

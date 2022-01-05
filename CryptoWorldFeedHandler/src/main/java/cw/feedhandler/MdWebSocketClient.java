@@ -23,8 +23,6 @@ public class MdWebSocketClient extends WebSocketClient {
 
     @Override
     public void onMessage(String s) {
-        // TODO - remove the print statement
-        System.out.println(s);
         this.webSocketMarketDataHandler.processMessage(s);
     }
 

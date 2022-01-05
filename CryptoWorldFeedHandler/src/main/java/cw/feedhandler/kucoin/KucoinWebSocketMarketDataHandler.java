@@ -1,46 +1,53 @@
-package cw.feedhandler.ftx;
+package cw.feedhandler.kucoin;
 
-import cw.common.json.JsonParser;
-import cw.common.md.Exchange;
-import cw.common.md.TradingPair;
-import cw.feedhandler.AbstractWebSocketMarketDataHandler;
+import com.google.gson.Gson;
 import cw.common.env.EnvUtil;
 import cw.common.json.FlyweightStringBuilder;
+import cw.common.json.JsonParser;
+import cw.common.md.Exchange;
 import cw.common.md.Quote;
+import cw.common.md.TradingPair;
+import cw.feedhandler.AbstractWebSocketMarketDataHandler;
+import cw.feedhandler.kucoin.gson.Response;
 import cwp.db.dynamodb.DynamoDbUtil;
 import net.openhft.chronicle.map.ChronicleMapBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-public class FtxWebSocketMarketDataHandler extends AbstractWebSocketMarketDataHandler {
-    private static final String SUBSCRIBE_PREFIX = "{\"op\": \"subscribe\", \"channel\": \"ticker\", \"market\": \"";
-    private static final String SUBSCRIBE_SUFFIX = "\", \"id\": 1}";
+public class KucoinWebSocketMarketDataHandler extends AbstractWebSocketMarketDataHandler {
+    private static final String SUBSCRIBE_PREFIX = "{\"id\": 1, \"type\": \"subscribe\",\"topic\": \"/market/ticker:";
+    private static final String SUBSCRIBE_SUFFIX = "\",\"privateChannel\": false,\"response\": true }";
     private static final StringBuilder SUBSCRIBE_STRING_BUILDER = new StringBuilder(SUBSCRIBE_PREFIX);
 
     private final ObjectLongHashMap<String> marketToTime;
-    private final FtxQuoteJsonParserListener quoteListener;
+    private final KucoinQuoteJsonParserListener quoteListener;
     private final JsonParser jsonParser;
 
-    public FtxWebSocketMarketDataHandler() throws Exception {
+    public KucoinWebSocketMarketDataHandler() throws Exception {
         super();
 
-        this.logger = LogManager.getLogger(FtxWebSocketMarketDataHandler.class.getSimpleName());
+        this.logger = LogManager.getLogger(KucoinWebSocketMarketDataHandler.class.getSimpleName());
         this.uri = new URI(getWebSocketEndpoint());
         this.topicToTradingPair = generateTopicToTradingPair(DynamoDbUtil.getMarketDataTopics(getExchange().getExchangeName()));
         String marketDataMap = DynamoDbUtil.getMarketDataMap(getExchange().getExchangeName(), EnvUtil.ENV.getEnvName());
         this.chronicleMap = ChronicleMapBuilder
                 .of(TradingPair.class, Quote.class)
                 .name(marketDataMap)
-                .averageKey(TradingPair.ETHPERP)
+                .averageKey(TradingPair.BTCUSDT)
                 .entries(10)
                 .createPersistedTo(new File(marketDataMap));
 
         this.marketToTime = new ObjectLongHashMap<>();
-        this.quoteListener = new FtxQuoteJsonParserListener();
+        this.quoteListener = new KucoinQuoteJsonParserListener();
         this.jsonParser = new JsonParser(new FlyweightStringBuilder());
         this.jsonParser.setListener(this.quoteListener);
 
@@ -48,13 +55,24 @@ public class FtxWebSocketMarketDataHandler extends AbstractWebSocketMarketDataHa
     }
 
     @Override
-    protected String getWebSocketEndpoint() {
-        return "wss://ftx.com/ws/";
+    protected String getWebSocketEndpoint() throws Exception {
+        URL url = new URL("https://api.kucoin.com/api/v1/bullet-public");
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        con.setRequestMethod("POST");
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream()));
+        String input = reader.lines().collect(Collectors.joining());
+        reader.close();
+
+        Gson gson = new Gson();
+        Response response = gson.fromJson(input, Response.class);
+
+        return "wss://ws-api.kucoin.com/endpoint?token=" + response.data.token;
     }
 
     @Override
     protected Exchange getExchange() {
-        return Exchange.FTX;
+        return Exchange.KUCOIN;
     }
 
     @Override
@@ -91,9 +109,9 @@ public class FtxWebSocketMarketDataHandler extends AbstractWebSocketMarketDataHa
             if (tradingPair == null) return;
 
             this.quoteNativeReference.setTradingPair(tradingPair);
-            this.quoteNativeReference.setBidPrice(this.quoteListener.bidPrice);
+            this.quoteNativeReference.setBidPrice(this.quoteListener.bid);
             this.quoteNativeReference.setBidSize(this.quoteListener.bidSize);
-            this.quoteNativeReference.setAskPrice(this.quoteListener.askPrice);
+            this.quoteNativeReference.setAskPrice(this.quoteListener.ask);
             this.quoteNativeReference.setAskSize(this.quoteListener.askSize);
 
             this.chronicleMap.put(tradingPair, this.quoteNativeReference);
