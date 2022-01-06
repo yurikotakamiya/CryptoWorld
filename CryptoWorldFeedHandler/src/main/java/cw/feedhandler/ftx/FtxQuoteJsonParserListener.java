@@ -27,17 +27,18 @@ public class FtxQuoteJsonParserListener extends JsonParserListenerAdaptor {
 
     @Override
     public boolean onObjectMember(CharSequence name) {
-        if (MARKET.equals(name.toString())) {
+        String nameStr = name.toString();
+        if (MARKET.equals(nameStr)) {
             foundMarket = true;
-        } else if (TIME.equals(name.toString())) {
+        } else if (TIME.equals(nameStr)) {
             foundTime = true;
-        } else if (BID.equals(name.toString())) {
+        } else if (BID.equals(nameStr)) {
             foundBid = true;
-        } else if (ASK.equals(name.toString())) {
+        } else if (ASK.equals(nameStr)) {
             foundAsk = true;
-        } else if (BID_SIZE.equals(name.toString())) {
+        } else if (BID_SIZE.equals(nameStr)) {
             foundBidSize = true;
-        } else if (ASK_SIZE.equals(name.toString())) {
+        } else if (ASK_SIZE.equals(nameStr)) {
             foundAskSize = true;
         }
         return true;

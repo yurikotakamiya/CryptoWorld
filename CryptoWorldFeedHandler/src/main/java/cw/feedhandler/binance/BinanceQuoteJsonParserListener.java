@@ -32,13 +32,14 @@ public class BinanceQuoteJsonParserListener extends JsonParserListenerAdaptor {
 
     @Override
     public boolean onObjectMember(CharSequence name) {
-        if (STREAM.equals(name.toString())) {
+        String nameStr = name.toString();
+        if (STREAM.equals(nameStr)) {
             this.stream.setLength(0);
-        } else if (LAST_UPDATE_ID.equals(name.toString())) {
+        } else if (LAST_UPDATE_ID.equals(nameStr)) {
             this.foundLastUpdateId = true;
-        } else if (BIDS.equals(name.toString())) {
+        } else if (BIDS.equals(nameStr)) {
             Arrays.fill(this.foundBids, true);
-        } else if (ASKS.equals(name.toString())) {
+        } else if (ASKS.equals(nameStr)) {
             Arrays.fill(this.foundAsks, true);
         }
 
