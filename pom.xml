@@ -11,6 +11,7 @@
     <modules>
         <module>CryptoWorldCommon</module>
         <module>CryptoWorldFeedHandler</module>
+        <module>CryptoWorldMonitorServer</module>
     </modules>
 
     <dependencies>
