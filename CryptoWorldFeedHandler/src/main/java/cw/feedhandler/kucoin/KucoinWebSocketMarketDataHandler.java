@@ -105,7 +105,7 @@ public class KucoinWebSocketMarketDataHandler extends AbstractWebSocketMarketDat
         if (this.quoteListener.time > time) {
             this.marketToTime.put(market, this.quoteListener.time);
 
-            TradingPair tradingPair = this.topicToTradingPair.get(market);
+            TradingPair tradingPair = this.topicToTradingPair.get(market.substring(market.indexOf(":") + 1));
             if (tradingPair == null) return;
 
             this.quoteNativeReference.setTradingPair(tradingPair);

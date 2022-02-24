@@ -19,8 +19,8 @@ public class QuoteChronicleMapReaderTest {
         Quote q2 = Quote.getNativeObject();
 
         while (true) {
-            q1 = map.getUsing(TradingPair.BTCUSDT, q1);
-            q2 = map.getUsing(TradingPair.ETHUSDT, q2);
+            map.getUsing(TradingPair.BTCUSDT, q1);
+            map.getUsing(TradingPair.ETHUSDT, q2);
 
             // Interval for writing is much shorter than reading and this tests data does not corrupt in the middle of reads
             // System.out.println(q1.getTradingPair() + " " + q1.getBidSize() + " " + q1.getAskSize() + " " + q1.getBidPrice() + " " + q1.getAskPrice());
