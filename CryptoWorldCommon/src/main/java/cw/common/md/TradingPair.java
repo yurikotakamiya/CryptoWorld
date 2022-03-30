@@ -1,9 +1,11 @@
 package cw.common.md;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 public enum TradingPair {
+    NONE(Collections.emptyMap()),
     BTCUSDT(Map.of(
             Exchange.BINANCE, "btcusdt",
             Exchange.KUCOIN, "BTC-USDT")),

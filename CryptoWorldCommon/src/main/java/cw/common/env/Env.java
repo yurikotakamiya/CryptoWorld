@@ -1,6 +1,7 @@
 package cw.common.env;
 
 public enum Env {
+    NONE("none"),
     DEV("dev"),
     PROD("prod");
 

@@ -1,6 +1,7 @@
 package cw.common.md;
 
 public enum Exchange {
+    NONE("none"),
     BINANCE("binance"),
     KUCOIN("kucoin"),
     FTX("ftx");
