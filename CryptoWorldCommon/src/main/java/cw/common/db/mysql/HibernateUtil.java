@@ -7,5 +7,7 @@ public class HibernateUtil {
         MySqlAdapter.addAnnotatedClass(User.class);
         MySqlAdapter.addAnnotatedClass(Order.class);
         MySqlAdapter.addAnnotatedClass(Trade.class);
+        MySqlAdapter.addAnnotatedClass(ApiKey.class);
+        MySqlAdapter.addAnnotatedClass(StrategyConfig.class);
     }
 }

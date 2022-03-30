@@ -1,7 +1,5 @@
-package cw.common.db;
+package cw.common.db.mysql;
 
-import cw.common.db.mysql.HibernateUtil;
-import cw.common.db.mysql.Trade;
 import cwp.db.mysql.MySqlAdapter;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
