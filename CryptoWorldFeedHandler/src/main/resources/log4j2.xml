@@ -10,7 +10,7 @@
     </Appenders>
 
     <Loggers>
-        <AsyncRoot level="DEBUG">
+        <AsyncRoot level="INFO">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="RandomAccessFile"/>
         </AsyncRoot>
