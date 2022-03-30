@@ -6,5 +6,6 @@ public class HibernateUtil {
     public static void setHibernateMapping() {
         MySqlAdapter.addAnnotatedClass(User.class);
         MySqlAdapter.addAnnotatedClass(Order.class);
+        MySqlAdapter.addAnnotatedClass(Trade.class);
     }
 }
