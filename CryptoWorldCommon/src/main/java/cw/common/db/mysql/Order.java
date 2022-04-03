@@ -1,15 +1,19 @@
 package cw.common.db.mysql;
 
+import cwp.db.IDbEntity;
+
 import javax.persistence.*;
 import java.util.Date;
 
 @Entity
 @Table(name = "orders")
-public class Order {
+public class Order implements IDbEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "order_id")
     private long id;
+
+    @Column(name = "client_order_id")
+    private String clientOrderId;
 
     @Column(name = "user_id")
     private int userId;
@@ -22,6 +26,12 @@ public class Order {
 
     @Column(name = "order_side_id")
     private byte orderSide;
+
+    @Column(name = "order_type_id")
+    private byte orderType;
+
+    @Column(name = "order_time_in_force")
+    private byte orderTimeInForce;
 
     @Column(name = "order_size")
     private double orderSize;
@@ -44,8 +54,8 @@ public class Order {
     @Column(name = "order_leaves_quantity")
     private double leavesQuantity;
 
-    @Column(name = "order_type_id")
-    private byte orderType;
+    @Column(name = "order_executed_quantity")
+    private double executedQuantity;
 
     @Column(name = "version")
     private int version;
@@ -56,6 +66,14 @@ public class Order {
 
     public void setId(long id) {
         this.id = id;
+    }
+
+    public String getClientOrderId() {
+        return this.clientOrderId;
+    }
+
+    public void setClientOrderId(String clientOrderId) {
+        this.clientOrderId = clientOrderId;
     }
 
     public int getUserId() {
@@ -154,6 +172,22 @@ public class Order {
         this.orderType = orderType;
     }
 
+    public byte getOrderTimeInForce() {
+        return this.orderTimeInForce;
+    }
+
+    public void setOrderTimeInForce(byte orderTimeInForce) {
+        this.orderTimeInForce = orderTimeInForce;
+    }
+
+    public double getExecutedQuantity() {
+        return this.executedQuantity;
+    }
+
+    public void setExecutedQuantity(double executedQuantity) {
+        this.executedQuantity = executedQuantity;
+    }
+
     public int getVersion() {
         return this.version;
     }
@@ -166,10 +200,13 @@ public class Order {
     public String toString() {
         return "Order{" +
                 "id=" + id +
+                ", clientOrderId='" + clientOrderId + '\'' +
                 ", userId=" + userId +
                 ", strategy=" + strategy +
                 ", tradingPair=" + tradingPair +
                 ", orderSide=" + orderSide +
+                ", orderType=" + orderType +
+                ", orderTimeInForce=" + orderTimeInForce +
                 ", orderSize=" + orderSize +
                 ", orderPrice=" + orderPrice +
                 ", createTime=" + createTime +
@@ -177,8 +214,13 @@ public class Order {
                 ", orderAction=" + orderAction +
                 ", orderState=" + orderState +
                 ", leavesQuantity=" + leavesQuantity +
-                ", orderType=" + orderType +
+                ", executedQuantity=" + executedQuantity +
                 ", version=" + version +
                 '}';
+    }
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
     }
 }

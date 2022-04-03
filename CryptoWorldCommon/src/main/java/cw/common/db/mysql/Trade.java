@@ -1,18 +1,22 @@
 package cw.common.db.mysql;
 
+import cwp.db.IDbEntity;
+
 import javax.persistence.*;
 import java.util.Date;
 
 @Entity
 @Table(name = "trades")
-public class Trade {
+public class Trade implements IDbEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "trade_id")
     private long id;
 
     @Column(name = "user_id")
     private int userId;
+
+    @Column(name = "order_id")
+    private long orderId;
 
     @Column(name = "strategy_id")
     private byte strategy;
@@ -25,6 +29,9 @@ public class Trade {
 
     @Column(name = "trade_type_id")
     private byte tradeType;
+
+    @Column(name = "trade_time_in_force")
+    private byte tradeTimeInForce;
 
     @Column(name = "trade_size")
     private double tradeSize;
@@ -107,18 +114,41 @@ public class Trade {
         this.executionTime = executionTime;
     }
 
+    public long getOrderId() {
+        return this.orderId;
+    }
+
+    public void setOrderId(long orderId) {
+        this.orderId = orderId;
+    }
+
+    public byte getTradeTimeInForce() {
+        return this.tradeTimeInForce;
+    }
+
+    public void setTradeTimeInForce(byte tradeTimeInForce) {
+        this.tradeTimeInForce = tradeTimeInForce;
+    }
+
     @Override
     public String toString() {
         return "Trade{" +
                 "id=" + id +
                 ", userId=" + userId +
+                ", orderId=" + orderId +
                 ", strategy=" + strategy +
                 ", tradingPair=" + tradingPair +
                 ", tradeSide=" + tradeSide +
                 ", tradeType=" + tradeType +
+                ", tradeTimeInForce=" + tradeTimeInForce +
                 ", tradeSize=" + tradeSize +
                 ", tradePrice=" + tradePrice +
                 ", executionTime=" + executionTime +
                 '}';
+    }
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
     }
 }

@@ -1,11 +1,14 @@
 package cw.common.db.mysql;
 
+import cw.common.event.IEvent;
+import cwp.db.IDbEntity;
+
 import javax.persistence.*;
 
 @Entity
 @Table(name = "api_keys")
 @IdClass(ApiKeyId.class)
-public class ApiKey {
+public class ApiKey implements IEvent, IDbEntity {
     @Id
     @Column(name = "user_id")
     private int userId;
@@ -17,7 +20,7 @@ public class ApiKey {
     @Column(name = "api_key")
     private String apiKey;
 
-    @Column(name = "api_secret_key")
+    @Column(name = "secret_key")
     private String secretKey;
 
     public int getUserId() {
@@ -58,5 +61,10 @@ public class ApiKey {
                 "userId=" + userId +
                 ", exchange=" + exchange +
                 '}';
+    }
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
     }
 }

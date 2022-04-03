@@ -1,11 +1,14 @@
 package cw.common.db.mysql;
 
+import cw.common.event.IEvent;
+import cwp.db.IDbEntity;
+
 import javax.persistence.*;
 
 @Entity
 @Table(name = "strategy_configs")
 @IdClass(StrategyConfigId.class)
-public class StrategyConfig {
+public class StrategyConfig implements IEvent, IDbEntity {
     @Id
     @Column(name = "user_id")
     private int userId;
@@ -23,10 +26,14 @@ public class StrategyConfig {
     private byte strategy;
 
     // Interval strategy parameters
-    @Column(name = "param_interval_order_size")
-    private double paramIntervalOrderSize;
+    @Column(name = "param_interval_start_price")
+    private Double paramIntervalStartPrice;
     @Column(name = "param_interval_price_interval")
-    private double paramIntervalPriceInterval;
+    private Double paramIntervalPriceInterval;
+    @Column(name = "param_interval_profit_price_change")
+    private Double paramIntervalProfitPriceChange;
+    @Column(name = "param_interval_order_size")
+    private Double paramIntervalOrderSize;
 
     public StrategyConfig() {
     }
@@ -63,20 +70,36 @@ public class StrategyConfig {
         this.strategy = strategy;
     }
 
-    public double getParamIntervalOrderSize() {
+    public Double getParamIntervalOrderSize() {
         return this.paramIntervalOrderSize;
     }
 
-    public void setParamIntervalOrderSize(double paramIntervalOrderSize) {
+    public void setParamIntervalOrderSize(Double paramIntervalOrderSize) {
         this.paramIntervalOrderSize = paramIntervalOrderSize;
     }
 
-    public double getParamIntervalPriceInterval() {
+    public Double getParamIntervalPriceInterval() {
         return this.paramIntervalPriceInterval;
     }
 
-    public void setParamIntervalPriceInterval(double paramIntervalPriceInterval) {
+    public void setParamIntervalPriceInterval(Double paramIntervalPriceInterval) {
         this.paramIntervalPriceInterval = paramIntervalPriceInterval;
+    }
+
+    public Double getParamIntervalProfitPriceChange() {
+        return this.paramIntervalProfitPriceChange;
+    }
+
+    public void setParamIntervalProfitPriceChange(Double paramIntervalProfitPriceChange) {
+        this.paramIntervalProfitPriceChange = paramIntervalProfitPriceChange;
+    }
+
+    public Double getParamIntervalStartPrice() {
+        return this.paramIntervalStartPrice;
+    }
+
+    public void setParamIntervalStartPrice(Double paramIntervalStartPrice) {
+        this.paramIntervalStartPrice = paramIntervalStartPrice;
     }
 
     @Override
@@ -86,6 +109,15 @@ public class StrategyConfig {
                 ", exchange=" + exchange +
                 ", tradingPair=" + tradingPair +
                 ", strategy=" + strategy +
+                ", paramIntervalOrderSize=" + paramIntervalOrderSize +
+                ", paramIntervalPriceInterval=" + paramIntervalPriceInterval +
+                ", paramIntervalProfitPriceChange=" + paramIntervalProfitPriceChange +
+                ", paramIntervalStartPrice=" + paramIntervalStartPrice +
                 '}';
+    }
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
     }
 }

@@ -1,16 +1,22 @@
 package cw.trader.event;
 
+import cw.common.config.StrategyType;
+import cw.common.db.mysql.ApiKey;
+import cw.common.db.mysql.StrategyConfig;
 import cw.common.event.IEvent;
 import cw.common.event.IEventHandler;
+import cw.common.md.ChronicleUtil;
 import cw.common.md.Exchange;
 import cw.common.md.MarketDataType;
 import cw.common.md.TradingPair;
 import cw.common.timer.ITimeManager;
 import cw.common.timer.Timer;
 import cw.common.timer.TimerType;
-import cw.trader.strategy.ITraderStrategy;
-import cw.trader.strategy.TraderStrategyType;
+import cw.trader.ExchangeApiHandler;
+import cw.trader.OrderResponse;
+import cw.trader.strategy.AbstractTraderStrategy;
 import cw.trader.strategy.interval.TraderIntervalStrategy;
+import cwp.db.mysql.MySqlAdapter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,12 +28,18 @@ public class TraderEventHandler implements IEventHandler {
     private static final Logger LOGGER = LogManager.getLogger(TraderEventHandler.class.getSimpleName());
     private static final long QUOTE_INTERVAL = 500;
 
-    private final Map<TradingPair, Map<Exchange, Map<TraderStrategyType, ITraderStrategy>>> strategies;
+    private final Map<TradingPair, Map<Exchange, Map<StrategyType, AbstractTraderStrategy>>> strategies;
+    private final Map<Integer, AbstractTraderStrategy> strategiesById;
+    private final Map<Exchange, ExchangeApiHandler> exchangeApiHandlers;
+    private final MySqlAdapter dbAdapter;
     private final ITimeManager timeManager;
     private final Consumer<Timer> timerConsumer;
 
-    public TraderEventHandler(ITimeManager timeManager, Consumer<Timer> timerConsumer) {
+    public TraderEventHandler(Map<Exchange, ExchangeApiHandler> exchangeApiHandlers, MySqlAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerConsumer) {
         this.strategies = new HashMap<>();
+        this.strategiesById = new HashMap<>();
+        this.exchangeApiHandlers = exchangeApiHandlers;
+        this.dbAdapter = dbAdapter;
         this.timeManager = timeManager;
         this.timerConsumer = timerConsumer;
     }
@@ -36,22 +48,26 @@ public class TraderEventHandler implements IEventHandler {
     public void process(IEvent event) throws Exception {
         if (event instanceof Timer) {
             handleTimer((Timer) event);
-        } else if (event instanceof TraderStrategyStartRequest) {
-            startStrategy((TraderStrategyStartRequest) event);
+        } else if (event instanceof OrderResponse) {
+            handleOrderResponse((OrderResponse) event);
+        } else if (event instanceof ApiKey) {
+            handleApiKey((ApiKey) event);
+        } else if (event instanceof StrategyConfig) {
+            handleStrategyConfig((StrategyConfig) event);
         } else {
             LOGGER.error("Received unknown event {}.", event);
         }
     }
 
-    private void handleTimer(Timer timer) {
+    private void handleTimer(Timer timer) throws Exception {
         if (timer.timerType == TimerType.QUOTE) {
-            Map<Exchange, Map<TraderStrategyType, ITraderStrategy>> map = this.strategies.get(timer.tradingPair);
+            Map<Exchange, Map<StrategyType, AbstractTraderStrategy>> map = this.strategies.get(timer.tradingPair);
             if (map == null) return;
 
-            Map<TraderStrategyType, ITraderStrategy> strategies = map.get(timer.exchange);
+            Map<StrategyType, AbstractTraderStrategy> strategies = map.get(timer.exchange);
             if (strategies == null) return;
 
-            for (ITraderStrategy strategy : strategies.values()) {
+            for (AbstractTraderStrategy strategy : strategies.values()) {
                 strategy.onTimerEvent(timer);
             }
 
@@ -60,45 +76,54 @@ public class TraderEventHandler implements IEventHandler {
         }
     }
 
-    private void startStrategy(TraderStrategyStartRequest startRequest) throws Exception {
-        TraderStrategyType strategyType = startRequest.strategyType;
-        Exchange exchange = startRequest.exchange;
-        TradingPair tradingPair = startRequest.tradingPair;
-
-        Map<Exchange, Map<TraderStrategyType, ITraderStrategy>> strategiesByExchange = this.strategies.get(tradingPair);
-
-        if (strategiesByExchange != null) {
-            Map<TraderStrategyType, ITraderStrategy> strategiesByType = strategiesByExchange.get(exchange);
-
-            if ((strategiesByType != null) && strategiesByType.containsKey(strategyType)) {
-                LOGGER.info("Not starting new strategy for {} {} {} because it already exists.", strategyType, exchange, tradingPair);
-                return;
-            }
-        }
-
-        ITraderStrategy strategy = null;
-
-        if (strategyType == TraderStrategyType.INTERVAL) {
-            strategy = new TraderIntervalStrategy(startRequest.exchange, tradingPair);
-        }
+    private void handleOrderResponse(OrderResponse event) {
+        AbstractTraderStrategy strategy = strategiesById.get(event.strategyId);
 
         if (strategy == null) {
-            LOGGER.error("Unknown strategy type {}.", strategyType);
-            return;
+            LOGGER.error("No strategy found for {}.", event);
         }
 
-        strategiesByExchange = this.strategies.computeIfAbsent(tradingPair, t -> new HashMap<>());
-        strategiesByExchange.computeIfAbsent(exchange, e -> new HashMap<>()).put(strategyType, strategy);
+        strategy.onOrderResponse(event);
+    }
 
-        LOGGER.info("Added new strategy {} {} {}.", strategyType, exchange, tradingPair);
+    private void handleApiKey(ApiKey apiKey) {
+        Exchange exchange = Exchange.values()[apiKey.getExchange()];
+        ExchangeApiHandler apiHandler = this.exchangeApiHandlers.get(exchange);
 
-        for (MarketDataType marketDataType : strategy.getInterestedMarketDataTypes()) {
-            if (marketDataType == MarketDataType.QUOTE) {
-                long expirationTime = this.timeManager.getCurrentTimeMillis() + QUOTE_INTERVAL;
-                this.timerConsumer.accept(new Timer(TimerType.QUOTE, expirationTime, exchange, tradingPair));
+        if (apiHandler != null) {
+            apiHandler.add(apiKey);
+        }
+    }
 
-                LOGGER.info("Scheduling {} timer with {} delay for {}.", marketDataType, QUOTE_INTERVAL, strategyType);
+    private void handleStrategyConfig(StrategyConfig strategyConfig) throws Exception {
+        Exchange exchange = Exchange.values()[strategyConfig.getExchange()];
+        TradingPair tradingPair = TradingPair.values()[strategyConfig.getTradingPair()];
+        StrategyType strategy = StrategyType.values()[strategyConfig.getStrategy()];
+
+        Map<Exchange, Map<StrategyType, AbstractTraderStrategy>> strategiesByExchange = this.strategies.computeIfAbsent(tradingPair, p -> new HashMap<>());
+        Map<StrategyType, AbstractTraderStrategy> strategiesByType = strategiesByExchange.computeIfAbsent(exchange, e -> new HashMap<>());
+        AbstractTraderStrategy traderStrategy = strategiesByType.get(strategy);
+
+        if (traderStrategy == null) {
+            if (strategy == StrategyType.INTERVAL) {
+                traderStrategy = new TraderIntervalStrategy(ChronicleUtil.getQuoteMap(exchange, tradingPair), ChronicleUtil.getQuote(), this.dbAdapter, exchange, this.exchangeApiHandlers.get(exchange), tradingPair);
+            }
+
+            strategiesByType.put(strategy, traderStrategy);
+            this.strategiesById.put(traderStrategy.getId(), traderStrategy);
+
+            LOGGER.info("Added new strategy {} {} {}.", exchange, tradingPair, strategy);
+
+            for (MarketDataType marketDataType : traderStrategy.getInterestedMarketDataTypes()) {
+                if (marketDataType == MarketDataType.QUOTE) {
+                    long expirationTime = this.timeManager.getCurrentTimeMillis() + QUOTE_INTERVAL;
+                    this.timerConsumer.accept(new Timer(TimerType.QUOTE, expirationTime, exchange, tradingPair));
+
+                    LOGGER.info("Scheduling {} timer with {} delay for {}.", marketDataType, QUOTE_INTERVAL, strategy);
+                }
             }
         }
+
+        traderStrategy.onStrategyConfig(strategyConfig);
     }
 }

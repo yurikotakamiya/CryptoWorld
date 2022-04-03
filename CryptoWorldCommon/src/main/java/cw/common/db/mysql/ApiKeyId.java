@@ -1,6 +1,7 @@
 package cw.common.db.mysql;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class ApiKeyId implements Serializable {
     private int userId;
@@ -28,5 +29,18 @@ public class ApiKeyId implements Serializable {
                 "userId=" + userId +
                 ", exchange=" + exchange +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ApiKeyId apiKeyId = (ApiKeyId) o;
+        return userId == apiKeyId.userId && exchange == apiKeyId.exchange;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(userId, exchange);
     }
 }

@@ -1,76 +1,67 @@
 package cw.trader.strategy.interval;
 
-import cw.common.env.EnvUtil;
+import com.binance.api.client.domain.TimeInForce;
+import cw.common.config.StrategyType;
+import cw.common.db.mysql.Order;
+import cw.common.db.mysql.StrategyConfig;
+import cw.common.db.mysql.Trade;
+import cw.common.id.IdGenerator;
 import cw.common.md.Exchange;
 import cw.common.md.MarketDataType;
 import cw.common.md.Quote;
 import cw.common.md.TradingPair;
+import cw.common.order.OrderAction;
+import cw.common.order.OrderSide;
+import cw.common.order.OrderState;
+import cw.common.order.OrderType;
 import cw.common.timer.Timer;
-import cw.trader.ITradeHandler;
-import cw.trader.handler.binance.BinanceTradeHandler;
-import cw.trader.handler.ftx.FtxTradeHandler;
-import cw.trader.handler.kucoin.KucoinTradeHandler;
-import cw.trader.strategy.ITraderStrategy;
-import cw.trader.strategy.TraderStrategyType;
-import cwp.db.dynamodb.DynamoDbUtil;
+import cw.trader.ExchangeApiHandler;
+import cw.trader.OrderResponse;
+import cw.trader.strategy.AbstractTraderStrategy;
+import cwp.db.IDbAdapter;
 import edu.emory.mathcs.backport.java.util.Collections;
 import net.openhft.chronicle.map.ChronicleMap;
-import net.openhft.chronicle.map.ChronicleMapBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.TestOnly;
 
-import java.io.File;
-import java.util.Collection;
+import java.util.*;
 
-public class TraderIntervalStrategy implements ITraderStrategy {
+public class TraderIntervalStrategy extends AbstractTraderStrategy {
     private static final Logger LOGGER = LogManager.getLogger(TraderIntervalStrategy.class.getSimpleName());
 
-    private final Exchange exchange;
-    private final TradingPair tradingPair;
-    private final ChronicleMap<TradingPair, Quote> chronicleMap;
-    private final Quote quote;
+    private final ExchangeApiHandler apiHandler;
 
-    private ITradeHandler handler;
+    private final Map<Integer, StrategyConfig> strategyConfigs;
+    private final Map<Integer, String> bidSizes;
+    private final Map<Double, Map<Integer, Double>> askSizes;
 
-    public TraderIntervalStrategy(Exchange exchange, TradingPair tradingPair) throws Exception {
-        this.exchange = exchange;
-        this.tradingPair = tradingPair;
+    private final TreeMap<Double, Set<Integer>> buyOrders;
+    private final TreeMap<Double, Set<Integer>> sellOrders;
+    private final Map<Long, Order> openOrders;
+    private final Map<Integer, Set<Double>> boughtPrices;
+    private final Map<Integer, Map<Double, Double>> askToBidPrice;
 
-        String marketDataMap = DynamoDbUtil.getMarketDataMap(this.exchange.getExchangeName(), EnvUtil.ENV.getEnvName());
-        this.chronicleMap = ChronicleMapBuilder
-                .of(TradingPair.class, Quote.class)
-                .name(marketDataMap)
-                .averageKey(this.tradingPair)
-                .entries(10)
-                .createPersistedTo(new File(marketDataMap));
+    public TraderIntervalStrategy(ChronicleMap<TradingPair, Quote> chronicleMap, Quote quote, IDbAdapter dbAdapter, Exchange exchange, ExchangeApiHandler apiHandler, TradingPair tradingPair) throws Exception {
+        super(chronicleMap, quote, dbAdapter, exchange, tradingPair);
 
-        this.quote = Quote.getNativeObject();
+        this.apiHandler = apiHandler;
 
-        if (this.exchange == Exchange.BINANCE) {
-            this.handler = new BinanceTradeHandler();
-        } else if (this.exchange == Exchange.KUCOIN) {
-            this.handler = new KucoinTradeHandler();
-        } else if (this.exchange == Exchange.FTX) {
-            this.handler = new FtxTradeHandler();
-        }
+        this.strategyConfigs = new HashMap<>();
+        this.bidSizes = new HashMap<>();
+        this.askSizes = new HashMap<>();
+
+        this.buyOrders = new TreeMap<>(Comparator.reverseOrder());
+        this.sellOrders = new TreeMap<>();
+        this.openOrders = new HashMap<>();
+        this.boughtPrices = new HashMap<>();
+        this.askToBidPrice = new HashMap<>();
 
         validate();
     }
 
     private void validate() throws Exception {
-        if (this.handler == null) throw new Exception("No handler has been created.");
-    }
-
-    @Override
-    public TraderStrategyType getTraderStrategyType() {
-        return TraderStrategyType.INTERVAL;
-    }
-
-    @Override
-    public void onTimerEvent(Timer timer) {
-        this.chronicleMap.getUsing(this.tradingPair, this.quote);
-
-        // TODO - perform actions
+        if (this.apiHandler == null) throw new Exception("No handler has been created.");
     }
 
     @Override
@@ -84,7 +75,317 @@ public class TraderIntervalStrategy implements ITraderStrategy {
     }
 
     @Override
+    public StrategyType getStrategyType() {
+        return StrategyType.INTERVAL;
+    }
+
+    @Override
+    public void onTimerEvent(Timer timer) throws Exception {
+        this.chronicleMap.getUsing(this.tradingPair, this.quote);
+
+        double bidPrice = this.quote.getBidPrice();
+        double askPrice = this.quote.getAskPrice();
+
+        Iterator<Map.Entry<Double, Set<Integer>>> iterator = this.sellOrders.entrySet().iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry<Double, Set<Integer>> current = iterator.next();
+
+            double sellPrice = current.getKey();
+            if (sellPrice > bidPrice) break;
+
+            for (int userId : current.getValue()) {
+                current.getValue().remove(userId);
+
+                Double askSize = this.askSizes.get(sellPrice).get(userId);
+
+                if (askSize == null) {
+                    LOGGER.error("Could not find askSize for {}.", userId);
+                    continue;
+                }
+
+                String orderSize = String.valueOf(askSize);
+                String orderPrice = String.valueOf(sellPrice);
+                Date now = new Date();
+
+                long orderId = IdGenerator.nextOrderTradeId();
+                Order order = new Order();
+                order.setId(orderId);
+                order.setUserId(userId);
+                order.setOrderAction((byte) OrderAction.SUBMIT.ordinal());
+                order.setOrderState((byte) OrderState.SUBMIT.ordinal());
+                order.setCreateTime(now);
+                order.setUpdateTime(now);
+                order.setTradingPair((byte) getTradingPair().ordinal());
+                order.setStrategy((byte) getStrategyType().ordinal());
+                order.setOrderTimeInForce((byte) TimeInForce.FOK.ordinal());
+                order.setOrderSide((byte) OrderSide.SELL.ordinal());
+                order.setOrderType((byte) OrderType.LIMIT.ordinal());
+                order.setOrderPrice(sellPrice);
+                order.setOrderSize(askSize);
+                order.setLeavesQuantity(askSize);
+                order.setVersion(1);
+
+                this.openOrders.put(orderId, order);
+                this.dbAdapter.write(order);
+
+                LOGGER.info("Sending sell order price {} and quantity {} for user {}.", orderPrice, orderSize, userId);
+
+                this.apiHandler.submitLimitFok(this, userId, orderId, orderSize, orderPrice, sellPrice, OrderSide.SELL);
+            }
+        }
+
+        iterator = this.buyOrders.entrySet().iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry<Double, Set<Integer>> current = iterator.next();
+
+            double buyPrice = current.getKey();
+            if (buyPrice < askPrice) break;
+
+            String orderPrice = String.valueOf(buyPrice);
+
+            for (int userId : current.getValue()) {
+                current.getValue().remove(userId);
+
+                String orderSize = this.bidSizes.get(userId);
+                double buySize = this.strategyConfigs.get(userId).getParamIntervalOrderSize();
+                Date now = new Date();
+
+                long orderId = IdGenerator.nextOrderTradeId();
+                Order order = new Order();
+                order.setId(orderId);
+                order.setUserId(userId);
+                order.setOrderAction((byte) OrderAction.SUBMIT.ordinal());
+                order.setOrderState((byte) OrderState.SUBMIT.ordinal());
+                order.setCreateTime(now);
+                order.setUpdateTime(now);
+                order.setTradingPair((byte) getTradingPair().ordinal());
+                order.setStrategy((byte) getStrategyType().ordinal());
+                order.setOrderTimeInForce((byte) TimeInForce.FOK.ordinal());
+                order.setOrderSide((byte) OrderSide.BUY.ordinal());
+                order.setOrderType((byte) OrderType.LIMIT.ordinal());
+                order.setOrderPrice(buyPrice);
+                order.setOrderSize(buySize);
+                order.setLeavesQuantity(buySize);
+                order.setVersion(1);
+
+                this.openOrders.put(orderId, order);
+                this.dbAdapter.write(order);
+
+                LOGGER.info("Sending buy order price {} and quantity {} for user {}.", orderPrice, orderSize, userId);
+
+                this.apiHandler.submitLimitFok(this, userId, orderId, orderSize, orderPrice, buyPrice, OrderSide.BUY);
+            }
+        }
+    }
+
+    @Override
+    public void onStrategyConfig(StrategyConfig strategyConfig) {
+        if (Exchange.values()[strategyConfig.getExchange()] != this.exchange) return;
+        if (TradingPair.values()[strategyConfig.getTradingPair()] != this.tradingPair) return;
+        if (StrategyType.values()[strategyConfig.getStrategy()] != StrategyType.INTERVAL) return;
+
+        if (strategyConfig.getParamIntervalStartPrice() == null || strategyConfig.getParamIntervalStartPrice() < 0) {
+            LOGGER.warn("Ignoring {} due to invalid start price config.", strategyConfig);
+            return;
+        }
+
+        if (strategyConfig.getParamIntervalPriceInterval() == null || strategyConfig.getParamIntervalPriceInterval() < 0) {
+            LOGGER.warn("Ignoring {} due to invalid price interval config.", strategyConfig);
+            return;
+        }
+
+        if (strategyConfig.getParamIntervalProfitPriceChange() == null || strategyConfig.getParamIntervalProfitPriceChange() < 0) {
+            LOGGER.warn("Ignoring {} due to invalid profit price change config.", strategyConfig);
+            return;
+        }
+
+        if (strategyConfig.getParamIntervalOrderSize() == null || strategyConfig.getParamIntervalOrderSize() < 0) {
+            LOGGER.warn("Ignoring {} due to invalid order size config.", strategyConfig);
+            return;
+        }
+
+        if (!this.apiHandler.validate(strategyConfig)) {
+            LOGGER.warn("Ignoring {} due to invalid config specific to exchange={}.", strategyConfig, exchange);
+            return;
+        }
+
+        int userId = strategyConfig.getUserId();
+        this.strategyConfigs.put(userId, strategyConfig);
+        this.bidSizes.put(userId, String.valueOf(strategyConfig.getParamIntervalOrderSize()));
+
+        LOGGER.info("Updated {} for user {}.", strategyConfig, userId);
+
+        double orderPrice = strategyConfig.getParamIntervalStartPrice();
+        Set<Double> boughtPricesForUser = this.boughtPrices.computeIfAbsent(userId, u -> new HashSet<>());
+
+        if (!boughtPricesForUser.contains(orderPrice)) {
+            this.buyOrders.computeIfAbsent(orderPrice, b -> new HashSet<>()).add(userId);
+
+            LOGGER.info("Preparing a buy order for user {} at configured start price {}.", userId, orderPrice);
+        }
+    }
+
+    @Override
+    public void onOrderResponse(OrderResponse orderResponse) {
+        long orderId = orderResponse.orderId;
+        Order order = this.openOrders.get(orderId);
+
+        if (OrderState.values()[order.getOrderState()] == OrderState.SUBMIT) {
+            order.setClientOrderId(orderResponse.clientOrderId);
+
+            if (orderResponse.orderState == OrderState.SUBMIT_REJECTED) {
+                order.setOrderAction((byte) OrderAction.SUBMIT_REJECTED.ordinal());
+                order.setOrderState((byte) OrderState.SUBMIT_REJECTED.ordinal());
+            } else {
+                order.setOrderAction((byte) OrderAction.SUBMITTED.ordinal());
+                order.setOrderState((byte) OrderState.SUBMITTED.ordinal());
+            }
+
+            order.setVersion(order.getVersion() + 1);
+            this.dbAdapter.write(order);
+        }
+
+        for (int i = 0; i < orderResponse.executedQuantities.size(); i++) {
+            double quantity = orderResponse.executedQuantities.get(i);
+            double price = orderResponse.executionPrice.get(i);
+
+            if (orderResponse.orderState == OrderState.EXECUTED) {
+                if (i == orderResponse.executedQuantities.size() - 1) {
+                    order.setOrderAction((byte) OrderAction.EXECUTED.ordinal());
+                    order.setOrderState((byte) OrderState.EXECUTED.ordinal());
+                } else {
+                    order.setOrderState((byte) OrderState.PARTIAL_EXEC.ordinal());
+                }
+            } else if (orderResponse.orderState == OrderState.PARTIAL_EXEC) {
+                order.setOrderState((byte) OrderState.PARTIAL_EXEC.ordinal());
+            }
+
+            order.setLeavesQuantity(order.getLeavesQuantity() - quantity);
+            order.setExecutedQuantity(order.getExecutedQuantity() + quantity);
+            order.setUpdateTime(new Date());
+            order.setVersion(order.getVersion() + 1);
+            this.dbAdapter.write(order);
+
+            Trade trade = new Trade();
+            trade.setId(IdGenerator.nextOrderTradeId());
+            trade.setUserId(order.getUserId());
+            trade.setOrderId(orderId);
+            trade.setStrategy(order.getStrategy());
+            trade.setTradePrice(price);
+            trade.setTradeSize(quantity);
+            trade.setTradingPair(order.getTradingPair());
+            trade.setTradeSide(order.getOrderSide());
+            trade.setTradeType(order.getOrderType());
+            trade.setTradeTimeInForce(order.getOrderTimeInForce());
+            trade.setExecutionTime(order.getUpdateTime());
+            this.dbAdapter.write(trade);
+        }
+
+        if (orderResponse.orderState == OrderState.CANCELED) {
+            order.setOrderAction((byte) orderResponse.orderAction.ordinal());
+            order.setOrderState((byte) orderResponse.orderState.ordinal());
+            order.setLeavesQuantity(0);
+            order.setVersion(order.getVersion() + 1);
+            this.dbAdapter.write(order);
+        }
+
+        Double bidPrice = orderResponse.bidPrice;
+        Double askPrice = orderResponse.askPrice;
+
+        if (OrderState.values()[order.getOrderState()].isComplete()) {
+            this.orderIdToClientOrderId.remove(orderId);
+            this.openOrders.remove(orderId);
+
+            int userId = orderResponse.userId;
+
+            if (bidPrice != null) {
+                StrategyConfig strategyConfig = this.strategyConfigs.get(userId);
+                double priceInterval = strategyConfig.getParamIntervalPriceInterval();
+                double profitPriceChange = strategyConfig.getParamIntervalProfitPriceChange();
+
+                if (order.getExecutedQuantity() > 0) {
+                    this.boughtPrices.get(userId).add(bidPrice);
+
+                    double newBidPrice = bidPrice - priceInterval;
+                    Set<Integer> userIdsForBidPrice = this.buyOrders.computeIfAbsent(newBidPrice, n -> new HashSet<>());
+                    userIdsForBidPrice.add(userId);
+
+                    LOGGER.info("Preparing a buy order for user {} at price {}.", userId, newBidPrice);
+
+                    double newAskPrice = bidPrice + profitPriceChange;
+                    Set<Integer> userIdsForAskPrice = this.sellOrders.computeIfAbsent(newAskPrice, n -> new HashSet<>());
+                    userIdsForAskPrice.add(userId);
+
+                    LOGGER.info("Preparing a sell order for user {} at price {} to close the fill at price {}.", userId, newAskPrice, bidPrice);
+
+                    Map<Double, Double> askToBidPriceForUser = this.askToBidPrice.computeIfAbsent(userId, u -> new HashMap<>());
+                    askToBidPriceForUser.put(newAskPrice, bidPrice);
+
+                    Map<Integer, Double> askSizesByUser = this.askSizes.computeIfAbsent(newAskPrice, n -> new HashMap<>());
+                    askSizesByUser.put(userId, order.getExecutedQuantity());
+                } else {
+                    this.buyOrders.get(bidPrice).add(userId);
+                }
+            } else if (askPrice != null) {
+                if (order.getExecutedQuantity() > 0) {
+                    this.askSizes.get(askPrice).remove(userId);
+
+                    double originalBidPrice = this.askToBidPrice.get(userId).remove(askPrice);
+                    this.buyOrders.get(originalBidPrice).add(userId);
+                    this.boughtPrices.get(userId).remove(originalBidPrice);
+                } else {
+                    this.sellOrders.get(askPrice).add(userId);
+                }
+            } else {
+                LOGGER.error("Neither bid or ask price was sent for {}.", orderResponse);
+            }
+        }
+    }
+
+    @Override
     public Collection<MarketDataType> getInterestedMarketDataTypes() {
         return Collections.singleton(MarketDataType.QUOTE);
+    }
+
+    @TestOnly
+    public Map<Integer, StrategyConfig> getStrategyConfigs() {
+        return this.strategyConfigs;
+    }
+
+    @TestOnly
+    public Map<Integer, String> getBidSizes() {
+        return this.bidSizes;
+    }
+
+    @TestOnly
+    public Map<Double, Map<Integer, Double>> getAskSizes() {
+        return this.askSizes;
+    }
+
+    @TestOnly
+    public TreeMap<Double, Set<Integer>> getBuyOrders() {
+        return this.buyOrders;
+    }
+
+    @TestOnly
+    public TreeMap<Double, Set<Integer>> getSellOrders() {
+        return this.sellOrders;
+    }
+
+    @TestOnly
+    public Map<Long, Order> getOpenOrders() {
+        return this.openOrders;
+    }
+
+    @TestOnly
+    public Map<Integer, Set<Double>> getBoughtPrices() {
+        return this.boughtPrices;
+    }
+
+    @TestOnly
+    public Map<Integer, Map<Double, Double>> getAskToBidPrice() {
+        return this.askToBidPrice;
     }
 }

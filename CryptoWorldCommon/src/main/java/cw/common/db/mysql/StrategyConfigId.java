@@ -1,6 +1,7 @@
 package cw.common.db.mysql;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class StrategyConfigId implements Serializable {
     private int userId;
@@ -58,5 +59,18 @@ public class StrategyConfigId implements Serializable {
                 ", tradingPair=" + tradingPair +
                 ", strategy=" + strategy +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        StrategyConfigId that = (StrategyConfigId) o;
+        return userId == that.userId && exchange == that.exchange && tradingPair == that.tradingPair && strategy == that.strategy;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(userId, exchange, tradingPair, strategy);
     }
 }
