@@ -61,6 +61,13 @@
             <version>3.4.4</version>
         </dependency>
 
+        <!-- Decimal rounding-->
+        <dependency>
+            <groupId>org.decimal4j</groupId>
+            <artifactId>decimal4j</artifactId>
+            <version>1.0.3</version>
+        </dependency>
+
         <!-- Unit test-->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

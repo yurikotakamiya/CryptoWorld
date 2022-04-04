@@ -26,6 +26,7 @@ import edu.emory.mathcs.backport.java.util.Collections;
 import net.openhft.chronicle.map.ChronicleMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.decimal4j.util.DoubleRounder;
 import org.jetbrains.annotations.TestOnly;
 
 import java.util.*;
@@ -221,6 +222,8 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
                         newBidPrice = startPrice + (int) ((quoteAskPrice - startPrice) / interval + 1) * interval;
                     }
 
+                    newBidPrice = DoubleRounder.round(newBidPrice, 10);
+
                     if (newBidPrice != 0 && !this.boughtPrices.get(userId).contains(newBidPrice)) {
                         this.buyOrders.computeIfAbsent(newBidPrice, n -> new HashSet<>()).add(userId);
                     }
@@ -314,8 +317,8 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
                 order.setOrderState((byte) OrderState.PARTIAL_EXEC.ordinal());
             }
 
-            order.setLeavesQuantity(order.getLeavesQuantity() - quantity);
-            order.setExecutedQuantity(order.getExecutedQuantity() + quantity);
+            order.setLeavesQuantity(DoubleRounder.round(order.getLeavesQuantity() - quantity, 10));
+            order.setExecutedQuantity(DoubleRounder.round(order.getExecutedQuantity() + quantity, 10));
             order.setUpdateTime(new Date());
             order.setVersion(order.getVersion() + 1);
             this.dbAdapter.write(order);
@@ -327,7 +330,7 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
             trade.setStrategy(order.getStrategy());
             trade.setTradePrice(price);
             trade.setTradeSize(quantity);
-            trade.setTradeNotional(price * quantity);
+            trade.setTradeNotional(DoubleRounder.round(price * quantity, 10));
             trade.setTradingPair(order.getTradingPair());
             trade.setTradeSide(order.getOrderSide());
             trade.setTradeType(order.getOrderType());
@@ -370,6 +373,8 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
                         newBidPrice = bidPrice - (int) ((bidPrice - quoteAskPrice) / priceInterval) * priceInterval;
                     }
 
+                    newBidPrice = DoubleRounder.round(newBidPrice, 10);
+
                     if (!boughtPricesForUser.contains(newBidPrice)) {
                         Set<Integer> userIdsForBidPrice = this.buyOrders.computeIfAbsent(newBidPrice, n -> new HashSet<>());
                         userIdsForBidPrice.add(userId);
@@ -377,7 +382,7 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
                         LOGGER.info("Preparing a buy order for user {} at price {}.", userId, newBidPrice);
                     }
 
-                    double newAskPrice = bidPrice + profitPriceChange;
+                    double newAskPrice = DoubleRounder.round(bidPrice + profitPriceChange, 10);
                     Set<Integer> userIdsForAskPrice = this.sellOrders.computeIfAbsent(newAskPrice, n -> new HashSet<>());
                     userIdsForAskPrice.add(userId);
 

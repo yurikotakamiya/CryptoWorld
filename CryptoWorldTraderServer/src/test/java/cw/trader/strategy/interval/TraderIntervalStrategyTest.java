@@ -853,7 +853,7 @@ public class TraderIntervalStrategyTest {
         Assertions.assertTrue(this.strategy.getAskToBidPrice().get(1).isEmpty());
 
         // Bid price = 45032 and order price = 45035
-        prepareNewOrderResponse("3", OrderStatus.FILLED, prepareTrade(List.of("0.15", "0.25"), List.of("45032", "45033")));
+        prepareNewOrderResponse("3", OrderStatus.FILLED, prepareTrade(List.of("0.15", "0.2", "0.05"), List.of("45031", "45032", "45033")));
         this.strategy.onTimerEvent(this.quoteTimer);
         this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45035, OrderSide.BUY);
@@ -862,9 +862,11 @@ public class TraderIntervalStrategyTest {
         order = validateNextDbOrder(null, OrderAction.SUBMIT, OrderState.SUBMIT, OrderSide.BUY, 45035, 0.4, 0.4, 0, 1);
         validateNextDbOrder("3", OrderAction.SUBMITTED, OrderState.SUBMITTED, OrderSide.BUY, 45035, 0.4, 0.4, 0, 2);
         validateNextDbOrder("3", OrderAction.SUBMITTED, OrderState.PARTIAL_EXEC, OrderSide.BUY, 45035, 0.4, 0.25, 0.15, 3);
-        validateNextDbTrade(order.getId(), OrderSide.BUY, 45032, 0.15);
-        validateNextDbOrder("3", OrderAction.EXECUTED, OrderState.EXECUTED, OrderSide.BUY, 45035, 0.4, 0, 0.4, 4);
-        validateNextDbTrade(order.getId(), OrderSide.BUY, 45033, 0.25);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 45031, 0.15);
+        validateNextDbOrder("3", OrderAction.SUBMITTED, OrderState.PARTIAL_EXEC, OrderSide.BUY, 45035, 0.4, 0.05, 0.35, 4);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 45032, 0.2);
+        validateNextDbOrder("3", OrderAction.EXECUTED, OrderState.EXECUTED, OrderSide.BUY, 45035, 0.4, 0, 0.4, 5);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 45033, 0.05);
 
         // Assert data structures
         Assertions.assertTrue(this.strategy.getBuyOrders().get(45035d).isEmpty());
