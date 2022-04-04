@@ -30,7 +30,7 @@ public class Trade implements IDbEntity {
     @Column(name = "trade_type_id")
     private byte tradeType;
 
-    @Column(name = "trade_time_in_force")
+    @Column(name = "trade_time_in_force_id")
     private byte tradeTimeInForce;
 
     @Column(name = "trade_size")
@@ -38,6 +38,9 @@ public class Trade implements IDbEntity {
 
     @Column(name = "trade_price")
     private double tradePrice;
+
+    @Column(name = "trade_notional")
+    private double tradeNotional;
 
     @Column(name = "execution_time")
     private Date executionTime;
@@ -130,6 +133,14 @@ public class Trade implements IDbEntity {
         this.tradeTimeInForce = tradeTimeInForce;
     }
 
+    public double getTradeNotional() {
+        return this.tradeNotional;
+    }
+
+    public void setTradeNotional(double tradeNotional) {
+        this.tradeNotional = tradeNotional;
+    }
+
     @Override
     public String toString() {
         return "Trade{" +
@@ -143,6 +154,7 @@ public class Trade implements IDbEntity {
                 ", tradeTimeInForce=" + tradeTimeInForce +
                 ", tradeSize=" + tradeSize +
                 ", tradePrice=" + tradePrice +
+                ", tradeNotional=" + tradeNotional +
                 ", executionTime=" + executionTime +
                 '}';
     }

@@ -5,7 +5,6 @@ public class IdGenerator {
     private static final long PROCESS_ID_TRADER = 1 * PROCESS_ID_OFFSET;
     private static final long PROCESS_ID_MONITOR = 2 * PROCESS_ID_OFFSET;
 
-
     private static int nextId = 1;
     private static long nextOrderTradeId = 1;
 

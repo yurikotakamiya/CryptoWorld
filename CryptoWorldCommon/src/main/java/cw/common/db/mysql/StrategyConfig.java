@@ -109,10 +109,10 @@ public class StrategyConfig implements IEvent, IDbEntity {
                 ", exchange=" + exchange +
                 ", tradingPair=" + tradingPair +
                 ", strategy=" + strategy +
+                ", paramIntervalStartPrice=" + paramIntervalStartPrice +
                 ", paramIntervalOrderSize=" + paramIntervalOrderSize +
                 ", paramIntervalPriceInterval=" + paramIntervalPriceInterval +
                 ", paramIntervalProfitPriceChange=" + paramIntervalProfitPriceChange +
-                ", paramIntervalStartPrice=" + paramIntervalStartPrice +
                 '}';
     }
 

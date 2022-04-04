@@ -15,11 +15,12 @@ import cw.common.order.OrderAction;
 import cw.common.order.OrderSide;
 import cw.common.order.OrderState;
 import cw.common.order.OrderType;
+import cw.common.timer.TimeManager;
 import cw.common.timer.Timer;
 import cw.common.timer.TimerType;
-import cw.trader.handler.binance.BinanceApiHandlerMock;
 import cw.trader.DbAdapterMock;
 import cw.trader.OrderInfo;
+import cw.trader.handler.binance.BinanceApiHandlerMock;
 import cwp.db.IDbEntity;
 import net.openhft.chronicle.map.ChronicleMap;
 import org.junit.jupiter.api.AfterEach;
@@ -38,7 +39,8 @@ public class TraderIntervalStrategyTest {
     private BinanceApiHandlerMock apiHandler;
     private TraderIntervalStrategy strategy;
 
-    private Timer timer;
+    private Timer quoteTimer;
+    private Timer healthCheckTimer;
     private StrategyConfig strategyConfig;
 
     @BeforeEach
@@ -47,7 +49,8 @@ public class TraderIntervalStrategyTest {
         this.quote = Mockito.mock(Quote.class);
         this.dbAdapter = new DbAdapterMock();
         this.apiHandler = new BinanceApiHandlerMock();
-        this.strategy = new TraderIntervalStrategy(this.chronicleMap, this.quote, this.dbAdapter, Exchange.BINANCE, this.apiHandler, TradingPair.BTCUSDT);
+        this.strategy = new TraderIntervalStrategy(this.chronicleMap, this.quote, this.dbAdapter, new TimeManager(), t -> {
+        }, Exchange.BINANCE, this.apiHandler, TradingPair.BTCUSDT);
 
         Mockito.when(this.quote.getBidPrice()).thenReturn(45000d);
         Mockito.when(this.quote.getAskPrice()).thenReturn(45002d);
@@ -56,7 +59,8 @@ public class TraderIntervalStrategyTest {
         this.apiHandler.add(apiKey);
         this.apiHandler.setEnqueueCallback(this.strategy::onOrderResponse);
 
-        this.timer = new Timer(TimerType.QUOTE, 0, Exchange.BINANCE, TradingPair.BTCUSDT);
+        this.quoteTimer = new Timer(this.strategy.getId(), TimerType.QUOTE, 0, Exchange.BINANCE, TradingPair.BTCUSDT);
+        this.healthCheckTimer = new Timer(this.strategy.getId(), TimerType.HEALTH_CHECK, 0, Exchange.BINANCE, TradingPair.BTCUSDT);
         this.strategyConfig = getStrategyConfig();
         this.strategy.onStrategyConfig(this.strategyConfig);
         Assertions.assertNotNull(this.strategy.getStrategyConfigs().get(this.strategyConfig.getUserId()));
@@ -173,7 +177,8 @@ public class TraderIntervalStrategyTest {
 
         // Ask price = 45002 and order price = 45005
         prepareNewOrderResponse("1", OrderStatus.FILLED, prepareTrade(List.of("0.2", "0.1", "0.1"), List.of("45002", "45004", "45005")));
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45005, OrderSide.BUY);
 
         // DB insertions
@@ -195,7 +200,8 @@ public class TraderIntervalStrategyTest {
         Assertions.assertEquals(45005d, this.strategy.getAskToBidPrice().get(1).get(45015d));
 
         // No order should go out next
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         this.apiHandler.hasNoOrder();
         this.dbAdapter.hasNoNextDbEntity();
 
@@ -214,7 +220,8 @@ public class TraderIntervalStrategyTest {
 
         // Bid price = 45016 and order price = 45015
         prepareNewOrderResponse("2", OrderStatus.FILLED, prepareTrade(List.of("0.15", "0.25"), List.of("45016", "45015")));
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45015, OrderSide.SELL);
 
         // DB insertions
@@ -247,7 +254,8 @@ public class TraderIntervalStrategyTest {
 
         // Ask price = 45002 and order price = 45005
         prepareNewOrderResponse("1", OrderStatus.NEW, null);
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45005, OrderSide.BUY);
 
         // DB insertions
@@ -255,7 +263,8 @@ public class TraderIntervalStrategyTest {
         validateNextDbOrder("1", OrderAction.SUBMITTED, OrderState.SUBMITTED, OrderSide.BUY, 45005, 0.4, 0.4, 0, 2);
 
         // Nothing happens
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         this.apiHandler.hasNoOrder();
         this.dbAdapter.hasNoNextDbEntity();
 
@@ -286,7 +295,8 @@ public class TraderIntervalStrategyTest {
         Assertions.assertTrue(this.strategy.getAskToBidPrice().isEmpty());
 
         // Nothing happens
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         this.apiHandler.hasNoOrder();
         this.dbAdapter.hasNoNextDbEntity();
 
@@ -313,7 +323,8 @@ public class TraderIntervalStrategyTest {
 
         // Bid price = 45016 and order price = 45015
         prepareNewOrderResponse("2", OrderStatus.NEW, null);
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45015, OrderSide.SELL);
 
         // DB insertions
@@ -321,7 +332,8 @@ public class TraderIntervalStrategyTest {
         validateNextDbOrder("2", OrderAction.SUBMITTED, OrderState.SUBMITTED, OrderSide.SELL, 45015, 0.4, 0.4, 0, 2);
 
         // Nothing happens
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         this.apiHandler.hasNoOrder();
         this.dbAdapter.hasNoNextDbEntity();
 
@@ -345,7 +357,8 @@ public class TraderIntervalStrategyTest {
         Assertions.assertEquals(45005d, this.strategy.getAskToBidPrice().get(1).get(45015d));
 
         // Nothing happens
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         this.apiHandler.hasNoOrder();
         this.dbAdapter.hasNoNextDbEntity();
 
@@ -388,7 +401,8 @@ public class TraderIntervalStrategyTest {
 
         // Ask price = 45002 and order price = 45005
         prepareNewOrderResponse("1", OrderStatus.CANCELED, null);
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45005, OrderSide.BUY);
 
         // DB insertions
@@ -406,7 +420,8 @@ public class TraderIntervalStrategyTest {
 
         // Ask price = 45002 and order price = 45005
         prepareNewOrderResponse("2", OrderStatus.FILLED, prepareTrade(List.of("0.2", "0.1", "0.1"), List.of("45002", "45004", "45005")));
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45005, OrderSide.BUY);
 
         // DB insertions
@@ -428,7 +443,8 @@ public class TraderIntervalStrategyTest {
         Assertions.assertEquals(45005d, this.strategy.getAskToBidPrice().get(1).get(45015d));
 
         // No order should go out next
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         this.apiHandler.hasNoOrder();
         this.dbAdapter.hasNoNextDbEntity();
     }
@@ -445,7 +461,8 @@ public class TraderIntervalStrategyTest {
 
         // Ask price = 45002 and order price = 45005
         prepareNewOrderResponse("1", OrderStatus.FILLED, prepareTrade(List.of("0.2", "0.1", "0.1"), List.of("45002", "45004", "45005")));
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45005, OrderSide.BUY);
 
         // DB insertions
@@ -467,7 +484,8 @@ public class TraderIntervalStrategyTest {
         Assertions.assertEquals(45005d, this.strategy.getAskToBidPrice().get(1).get(45015d));
 
         // No order should go out next
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         this.apiHandler.hasNoOrder();
         this.dbAdapter.hasNoNextDbEntity();
 
@@ -486,7 +504,8 @@ public class TraderIntervalStrategyTest {
 
         // Bid price = 45016 and order price = 45015
         prepareNewOrderResponse("2", OrderStatus.CANCELED, null);
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45015, OrderSide.SELL);
 
         // DB insertions
@@ -505,7 +524,8 @@ public class TraderIntervalStrategyTest {
 
         // Bid price = 45016 and order price = 45015
         prepareNewOrderResponse("3", OrderStatus.CANCELED, null);
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45015, OrderSide.SELL);
 
         // DB insertions
@@ -526,7 +546,8 @@ public class TraderIntervalStrategyTest {
 
         // Ask price = 45002 and order price = 45005
         prepareNewOrderResponse("1", OrderStatus.REJECTED, null);
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45005, OrderSide.BUY);
 
         // DB insertions
@@ -543,7 +564,8 @@ public class TraderIntervalStrategyTest {
 
         // Ask price = 45002 and order price = 45005
         prepareNewOrderResponse("1", OrderStatus.REJECTED, null);
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45005, OrderSide.BUY);
 
         // DB insertions
@@ -571,7 +593,8 @@ public class TraderIntervalStrategyTest {
 
         // Ask price = 45002 and order price = 45005
         prepareNewOrderResponse("1", OrderStatus.FILLED, prepareTrade(List.of("0.2", "0.1", "0.1"), List.of("45002", "45004", "45005")));
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45005, OrderSide.BUY);
 
         // DB insertions
@@ -593,7 +616,8 @@ public class TraderIntervalStrategyTest {
         Assertions.assertEquals(45005d, this.strategy.getAskToBidPrice().get(1).get(45015d));
 
         // No order should go out next
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         this.apiHandler.hasNoOrder();
         this.dbAdapter.hasNoNextDbEntity();
 
@@ -612,11 +636,12 @@ public class TraderIntervalStrategyTest {
 
         // Bid price = 45016 and order price = 45015
         prepareNewOrderResponse("2", OrderStatus.REJECTED, null);
-        this.strategy.onTimerEvent(this.timer);
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
         validateNextOrder(1, "0.4", 45015, OrderSide.SELL);
 
         // DB insertions
-        order = validateNextDbOrder(null, OrderAction.SUBMIT, OrderState.SUBMIT, OrderSide.SELL, 45015, 0.4, 0.4, 0, 1);
+        validateNextDbOrder(null, OrderAction.SUBMIT, OrderState.SUBMIT, OrderSide.SELL, 45015, 0.4, 0.4, 0, 1);
         validateNextDbOrder("2", OrderAction.SUBMIT_REJECTED, OrderState.SUBMIT_REJECTED, OrderSide.SELL, 45015, 0.4, 0.4, 0, 2);
 
         // Assert data structures
@@ -630,17 +655,232 @@ public class TraderIntervalStrategyTest {
     }
 
     @Test
-    void test_QuickDip() {
+    void test_QuickDip() throws Exception {
+        // Assert data structures
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(45005d).contains(1));
+        Assertions.assertTrue(this.strategy.getSellOrders().isEmpty());
+        Assertions.assertEquals("0.4", this.strategy.getBidSizes().get(1));
+        Assertions.assertTrue(this.strategy.getAskSizes().isEmpty());
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).isEmpty());
+        Assertions.assertTrue(this.strategy.getAskToBidPrice().isEmpty());
 
+        // Ask price = 45002 and order price = 45005
+        prepareNewOrderResponse("1", OrderStatus.FILLED, prepareTrade(List.of("0.2", "0.1", "0.1"), List.of("45002", "45004", "45005")));
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
+        validateNextOrder(1, "0.4", 45005, OrderSide.BUY);
+
+        // DB insertions
+        Order order = validateNextDbOrder(null, OrderAction.SUBMIT, OrderState.SUBMIT, OrderSide.BUY, 45005, 0.4, 0.4, 0, 1);
+        validateNextDbOrder("1", OrderAction.SUBMITTED, OrderState.SUBMITTED, OrderSide.BUY, 45005, 0.4, 0.4, 0, 2);
+        validateNextDbOrder("1", OrderAction.SUBMITTED, OrderState.PARTIAL_EXEC, OrderSide.BUY, 45005, 0.4, 0.2, 0.2, 3);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 45002, 0.2);
+        validateNextDbOrder("1", OrderAction.SUBMITTED, OrderState.PARTIAL_EXEC, OrderSide.BUY, 45005, 0.4, 0.1, 0.3, 4);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 45004, 0.1);
+        validateNextDbOrder("1", OrderAction.EXECUTED, OrderState.EXECUTED, OrderSide.BUY, 45005, 0.4, 0, 0.4, 5);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 45005, 0.1);
+
+        // Assert data structures
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(45005d).isEmpty());
+        Assertions.assertTrue(this.strategy.getSellOrders().get(45015d).contains(1));
+        Assertions.assertEquals("0.4", this.strategy.getBidSizes().get(1));
+        Assertions.assertEquals(0.4, this.strategy.getAskSizes().get(45015d).get(1));
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).contains(45005d));
+        Assertions.assertEquals(45005d, this.strategy.getAskToBidPrice().get(1).get(45015d));
+
+        // Quote updated to issue more buy orders
+        Mockito.when(this.quote.getBidPrice()).thenReturn(44955d);
+        Mockito.when(this.quote.getAskPrice()).thenReturn(44957d);
+
+        // Ask price = 44957d and order price = 44990
+        prepareNewOrderResponse("2", OrderStatus.FILLED, prepareTrade(List.of("0.15", "0.25"), List.of("44957", "44958")));
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
+        validateNextOrder(1, "0.4", 44990, OrderSide.BUY);
+
+        // DB insertions
+        order = validateNextDbOrder(null, OrderAction.SUBMIT, OrderState.SUBMIT, OrderSide.BUY, 44990, 0.4, 0.4, 0, 1);
+        validateNextDbOrder("2", OrderAction.SUBMITTED, OrderState.SUBMITTED, OrderSide.BUY, 44990, 0.4, 0.4, 0, 2);
+        validateNextDbOrder("2", OrderAction.SUBMITTED, OrderState.PARTIAL_EXEC, OrderSide.BUY, 44990, 0.4, 0.25, 0.15, 3);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 44957, 0.15);
+        validateNextDbOrder("2", OrderAction.EXECUTED, OrderState.EXECUTED, OrderSide.BUY, 44990, 0.4, 0, 0.4, 4);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 44958, 0.25);
+
+        // Assert data structures
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(45005d).isEmpty());
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(44990d).isEmpty());
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(44960d).contains(1));
+        Assertions.assertTrue(this.strategy.getSellOrders().get(45015d).contains(1));
+        Assertions.assertTrue(this.strategy.getSellOrders().get(45000d).contains(1));
+        Assertions.assertEquals("0.4", this.strategy.getBidSizes().get(1));
+        Assertions.assertEquals(0.4, this.strategy.getAskSizes().get(45015d).get(1));
+        Assertions.assertEquals(0.4, this.strategy.getAskSizes().get(45000d).get(1));
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).contains(45005d));
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).contains(44990d));
+        Assertions.assertEquals(45005d, this.strategy.getAskToBidPrice().get(1).get(45015d));
+        Assertions.assertEquals(44990d, this.strategy.getAskToBidPrice().get(1).get(45000d));
+
+        // Ask price = 45002 and order price = 44975
+        prepareNewOrderResponse("3", OrderStatus.FILLED, prepareTrade(List.of("0.15", "0.25"), List.of("44959", "44960")));
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
+        validateNextOrder(1, "0.4", 44960, OrderSide.BUY);
+
+        // DB insertions
+        order = validateNextDbOrder(null, OrderAction.SUBMIT, OrderState.SUBMIT, OrderSide.BUY, 44960, 0.4, 0.4, 0, 1);
+        validateNextDbOrder("3", OrderAction.SUBMITTED, OrderState.SUBMITTED, OrderSide.BUY, 44960, 0.4, 0.4, 0, 2);
+        validateNextDbOrder("3", OrderAction.SUBMITTED, OrderState.PARTIAL_EXEC, OrderSide.BUY, 44960, 0.4, 0.25, 0.15, 3);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 44959, 0.15);
+        validateNextDbOrder("3", OrderAction.EXECUTED, OrderState.EXECUTED, OrderSide.BUY, 44960, 0.4, 0, 0.4, 4);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 44960, 0.25);
+
+        // Assert data structures
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(45005d).isEmpty());
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(44990d).isEmpty());
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(44960d).isEmpty());
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(44945d).contains(1));
+        Assertions.assertTrue(this.strategy.getSellOrders().get(45015d).contains(1));
+        Assertions.assertTrue(this.strategy.getSellOrders().get(45000d).contains(1));
+        Assertions.assertTrue(this.strategy.getSellOrders().get(44970d).contains(1));
+        Assertions.assertEquals("0.4", this.strategy.getBidSizes().get(1));
+        Assertions.assertEquals(0.4, this.strategy.getAskSizes().get(45015d).get(1));
+        Assertions.assertEquals(0.4, this.strategy.getAskSizes().get(45000d).get(1));
+        Assertions.assertEquals(0.4, this.strategy.getAskSizes().get(44970d).get(1));
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).contains(45005d));
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).contains(44990d));
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).contains(44960d));
+        Assertions.assertEquals(45005d, this.strategy.getAskToBidPrice().get(1).get(45015d));
+        Assertions.assertEquals(44990d, this.strategy.getAskToBidPrice().get(1).get(45000d));
+        Assertions.assertEquals(44960d, this.strategy.getAskToBidPrice().get(1).get(44970d));
+
+        // Issues no further buy or sell orders
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
+        this.apiHandler.hasNoOrder();
+        this.dbAdapter.hasNoNextDbEntity();
     }
 
     @Test
-    void test_QuickRise() {
+    void test_QuickRise() throws Exception {
+        // Assert data structures
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(45005d).contains(1));
+        Assertions.assertTrue(this.strategy.getSellOrders().isEmpty());
+        Assertions.assertEquals("0.4", this.strategy.getBidSizes().get(1));
+        Assertions.assertTrue(this.strategy.getAskSizes().isEmpty());
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).isEmpty());
+        Assertions.assertTrue(this.strategy.getAskToBidPrice().isEmpty());
 
-    }
+        // Ask price = 45002 and order price = 45005
+        prepareNewOrderResponse("1", OrderStatus.FILLED, prepareTrade(List.of("0.2", "0.1", "0.1"), List.of("45002", "45004", "45005")));
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
+        validateNextOrder(1, "0.4", 45005, OrderSide.BUY);
 
-    @Test
-    void test_MultiUsers() {
+        // DB insertions
+        Order order = validateNextDbOrder(null, OrderAction.SUBMIT, OrderState.SUBMIT, OrderSide.BUY, 45005, 0.4, 0.4, 0, 1);
+        validateNextDbOrder("1", OrderAction.SUBMITTED, OrderState.SUBMITTED, OrderSide.BUY, 45005, 0.4, 0.4, 0, 2);
+        validateNextDbOrder("1", OrderAction.SUBMITTED, OrderState.PARTIAL_EXEC, OrderSide.BUY, 45005, 0.4, 0.2, 0.2, 3);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 45002, 0.2);
+        validateNextDbOrder("1", OrderAction.SUBMITTED, OrderState.PARTIAL_EXEC, OrderSide.BUY, 45005, 0.4, 0.1, 0.3, 4);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 45004, 0.1);
+        validateNextDbOrder("1", OrderAction.EXECUTED, OrderState.EXECUTED, OrderSide.BUY, 45005, 0.4, 0, 0.4, 5);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 45005, 0.1);
 
+        // Assert data structures
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(45005d).isEmpty());
+        Assertions.assertTrue(this.strategy.getSellOrders().get(45015d).contains(1));
+        Assertions.assertEquals("0.4", this.strategy.getBidSizes().get(1));
+        Assertions.assertEquals(0.4, this.strategy.getAskSizes().get(45015d).get(1));
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).contains(45005d));
+        Assertions.assertEquals(45005d, this.strategy.getAskToBidPrice().get(1).get(45015d));
+
+        // Quote updated to issue more buy orders
+        Mockito.when(this.quote.getBidPrice()).thenReturn(45030d);
+        Mockito.when(this.quote.getAskPrice()).thenReturn(45032d);
+
+        // Bid price = 45032 and order price = 45015
+        prepareNewOrderResponse("2", OrderStatus.FILLED, prepareTrade(List.of("0.15", "0.25"), List.of("45014", "45013")));
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
+        validateNextOrder(1, "0.4", 45015, OrderSide.SELL);
+
+        // DB insertions
+        order = validateNextDbOrder(null, OrderAction.SUBMIT, OrderState.SUBMIT, OrderSide.SELL, 45015, 0.4, 0.4, 0, 1);
+        validateNextDbOrder("2", OrderAction.SUBMITTED, OrderState.SUBMITTED, OrderSide.SELL, 45015, 0.4, 0.4, 0, 2);
+        validateNextDbOrder("2", OrderAction.SUBMITTED, OrderState.PARTIAL_EXEC, OrderSide.SELL, 45015, 0.4, 0.25, 0.15, 3);
+        validateNextDbTrade(order.getId(), OrderSide.SELL, 45014, 0.15);
+        validateNextDbOrder("2", OrderAction.EXECUTED, OrderState.EXECUTED, OrderSide.SELL, 45015, 0.4, 0, 0.4, 4);
+        validateNextDbTrade(order.getId(), OrderSide.SELL, 45013, 0.25);
+
+        // Assert data structures
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(45005d).contains(1));
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(44990d).contains(1));
+        Assertions.assertTrue(this.strategy.getSellOrders().get(45015d).isEmpty());
+        Assertions.assertEquals("0.4", this.strategy.getBidSizes().get(1));
+        Assertions.assertTrue(this.strategy.getAskSizes().get(45015d).isEmpty());
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).isEmpty());
+        Assertions.assertTrue(this.strategy.getAskToBidPrice().get(1).isEmpty());
+
+        // No order should go out next
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
+        this.apiHandler.hasNoOrder();
+        this.dbAdapter.hasNoNextDbEntity();
+
+        // Assert data structures
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(45005d).contains(1));
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(44990d).contains(1));
+        Assertions.assertTrue(this.strategy.getSellOrders().get(45015d).isEmpty());
+        Assertions.assertEquals("0.4", this.strategy.getBidSizes().get(1));
+        Assertions.assertTrue(this.strategy.getAskSizes().get(45015d).isEmpty());
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).isEmpty());
+        Assertions.assertTrue(this.strategy.getAskToBidPrice().get(1).isEmpty());
+
+        // Health check - place a buy order at 45035
+        this.strategy.onTimerEvent(this.healthCheckTimer);
+        this.apiHandler.flushNewOrderResponse(1);
+        this.apiHandler.hasNoOrder();
+        this.dbAdapter.hasNoNextDbEntity();
+
+        // Assert data structures
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(45035d).contains(1));
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(45005d).contains(1));
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(44990d).contains(1));
+        Assertions.assertTrue(this.strategy.getSellOrders().get(45015d).isEmpty());
+        Assertions.assertEquals("0.4", this.strategy.getBidSizes().get(1));
+        Assertions.assertTrue(this.strategy.getAskSizes().get(45015d).isEmpty());
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).isEmpty());
+        Assertions.assertTrue(this.strategy.getAskToBidPrice().get(1).isEmpty());
+
+        // Bid price = 45032 and order price = 45035
+        prepareNewOrderResponse("3", OrderStatus.FILLED, prepareTrade(List.of("0.15", "0.25"), List.of("45032", "45033")));
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
+        validateNextOrder(1, "0.4", 45035, OrderSide.BUY);
+
+        // DB insertions
+        order = validateNextDbOrder(null, OrderAction.SUBMIT, OrderState.SUBMIT, OrderSide.BUY, 45035, 0.4, 0.4, 0, 1);
+        validateNextDbOrder("3", OrderAction.SUBMITTED, OrderState.SUBMITTED, OrderSide.BUY, 45035, 0.4, 0.4, 0, 2);
+        validateNextDbOrder("3", OrderAction.SUBMITTED, OrderState.PARTIAL_EXEC, OrderSide.BUY, 45035, 0.4, 0.25, 0.15, 3);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 45032, 0.15);
+        validateNextDbOrder("3", OrderAction.EXECUTED, OrderState.EXECUTED, OrderSide.BUY, 45035, 0.4, 0, 0.4, 4);
+        validateNextDbTrade(order.getId(), OrderSide.BUY, 45033, 0.25);
+
+        // Assert data structures
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(45035d).isEmpty());
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(45005d).contains(1));
+        Assertions.assertTrue(this.strategy.getBuyOrders().get(44990d).contains(1));
+        Assertions.assertTrue(this.strategy.getSellOrders().get(45045d).contains(1));
+        Assertions.assertTrue(this.strategy.getSellOrders().get(45015d).isEmpty());
+        Assertions.assertEquals("0.4", this.strategy.getBidSizes().get(1));
+        Assertions.assertEquals(0.4, this.strategy.getAskSizes().get(45045d).get(1));
+        Assertions.assertTrue(this.strategy.getBoughtPrices().get(1).contains(45035d));
+        Assertions.assertEquals(45035d, this.strategy.getAskToBidPrice().get(1).get(45045d));
+
+        // Issues no further buy or sell orders
+        this.strategy.onTimerEvent(this.quoteTimer);
+        this.apiHandler.flushNewOrderResponse(1);
+        this.apiHandler.hasNoOrder();
+        this.dbAdapter.hasNoNextDbEntity();
     }
 }

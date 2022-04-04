@@ -88,10 +88,6 @@ public class BinanceApiAsyncRestClientMock implements BinanceApiAsyncRestClient 
     @Override
     public void newOrder(NewOrder newOrder, BinanceApiCallback<NewOrderResponse> binanceApiCallback) {
         this.binanceApiCallback = binanceApiCallback;
-
-        while (!this.newOrderResponses.isEmpty()) {
-            this.binanceApiCallback.onResponse(this.newOrderResponses.remove(0));
-        }
     }
 
     public void flushNewOrderResponses() {

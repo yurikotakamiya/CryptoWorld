@@ -14,7 +14,10 @@ import cw.common.order.OrderAction;
 import cw.common.order.OrderSide;
 import cw.common.order.OrderState;
 import cw.common.order.OrderType;
+import cw.common.timer.ITimeManager;
+import cw.common.timer.TimeManager;
 import cw.common.timer.Timer;
+import cw.common.timer.TimerType;
 import cw.trader.ExchangeApiHandler;
 import cw.trader.OrderResponse;
 import cw.trader.strategy.AbstractTraderStrategy;
@@ -26,9 +29,12 @@ import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.TestOnly;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 public class TraderIntervalStrategy extends AbstractTraderStrategy {
     private static final Logger LOGGER = LogManager.getLogger(TraderIntervalStrategy.class.getSimpleName());
+    private static final long QUOTE_INTERVAL = 500;
+    private static final long HEALTH_CHECK_INTERVAL = 5 * TimeManager.ONE_SEC;
 
     private final ExchangeApiHandler apiHandler;
 
@@ -39,11 +45,12 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
     private final TreeMap<Double, Set<Integer>> buyOrders;
     private final TreeMap<Double, Set<Integer>> sellOrders;
     private final Map<Long, Order> openOrders;
+    private final Map<Integer, Set<Long>> pendingOrdersByUser;
     private final Map<Integer, Set<Double>> boughtPrices;
     private final Map<Integer, Map<Double, Double>> askToBidPrice;
 
-    public TraderIntervalStrategy(ChronicleMap<TradingPair, Quote> chronicleMap, Quote quote, IDbAdapter dbAdapter, Exchange exchange, ExchangeApiHandler apiHandler, TradingPair tradingPair) throws Exception {
-        super(chronicleMap, quote, dbAdapter, exchange, tradingPair);
+    public TraderIntervalStrategy(ChronicleMap<TradingPair, Quote> chronicleMap, Quote quote, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, ExchangeApiHandler apiHandler, TradingPair tradingPair) throws Exception {
+        super(chronicleMap, quote, dbAdapter, timeManager, timerScheduler, exchange, tradingPair);
 
         this.apiHandler = apiHandler;
 
@@ -54,14 +61,30 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
         this.buyOrders = new TreeMap<>(Comparator.reverseOrder());
         this.sellOrders = new TreeMap<>();
         this.openOrders = new HashMap<>();
+        this.pendingOrdersByUser = new HashMap<>();
         this.boughtPrices = new HashMap<>();
         this.askToBidPrice = new HashMap<>();
 
         validate();
+        scheduleTimers();
     }
 
     private void validate() throws Exception {
         if (this.apiHandler == null) throw new Exception("No handler has been created.");
+    }
+
+    private void scheduleTimers() {
+        if (getInterestedMarketDataTypes().contains(TimerType.QUOTE)) {
+            long expirationTime = this.timeManager.getCurrentTimeMillis() + QUOTE_INTERVAL;
+            scheduleTimer(new Timer(this.id, TimerType.QUOTE, expirationTime, exchange, tradingPair));
+
+            LOGGER.info("Scheduling {} timer with {} delay for {}.", TimerType.QUOTE, QUOTE_INTERVAL, getStrategyType());
+        }
+
+        long expirationTime = this.timeManager.getCurrentTimeMillis() + HEALTH_CHECK_INTERVAL;
+        scheduleTimer(new Timer(this.id, TimerType.HEALTH_CHECK, expirationTime, exchange, tradingPair));
+
+        LOGGER.info("Scheduling {} timer with {} delay for {}.", TimerType.HEALTH_CHECK, HEALTH_CHECK_INTERVAL, getStrategyType());
     }
 
     @Override
@@ -81,102 +104,131 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
 
     @Override
     public void onTimerEvent(Timer timer) throws Exception {
-        this.chronicleMap.getUsing(this.tradingPair, this.quote);
+        if (timer.timerType == TimerType.QUOTE) {
+            this.chronicleMap.getUsing(this.tradingPair, this.quote);
 
-        double bidPrice = this.quote.getBidPrice();
-        double askPrice = this.quote.getAskPrice();
+            double bidPrice = this.quote.getBidPrice();
+            double askPrice = this.quote.getAskPrice();
 
-        Iterator<Map.Entry<Double, Set<Integer>>> iterator = this.sellOrders.entrySet().iterator();
+            for (Map.Entry<Double, Set<Integer>> entry : this.sellOrders.entrySet()) {
+                double sellPrice = entry.getKey();
+                if (sellPrice > bidPrice) break;
 
-        while (iterator.hasNext()) {
-            Map.Entry<Double, Set<Integer>> current = iterator.next();
+                for (int userId : entry.getValue()) {
+                    entry.getValue().remove(userId);
+                    Double askSize = this.askSizes.get(sellPrice).get(userId);
 
-            double sellPrice = current.getKey();
-            if (sellPrice > bidPrice) break;
+                    if (askSize == null) {
+                        LOGGER.error("Could not find askSize for {}.", userId);
+                        continue;
+                    }
 
-            for (int userId : current.getValue()) {
-                current.getValue().remove(userId);
+                    String orderSize = String.valueOf(askSize);
+                    String orderPrice = String.valueOf(sellPrice);
+                    Date now = new Date();
 
-                Double askSize = this.askSizes.get(sellPrice).get(userId);
+                    long orderId = IdGenerator.nextOrderTradeId();
+                    Order order = new Order();
+                    order.setId(orderId);
+                    order.setUserId(userId);
+                    order.setOrderAction((byte) OrderAction.SUBMIT.ordinal());
+                    order.setOrderState((byte) OrderState.SUBMIT.ordinal());
+                    order.setCreateTime(now);
+                    order.setUpdateTime(now);
+                    order.setTradingPair((byte) getTradingPair().ordinal());
+                    order.setStrategy((byte) getStrategyType().ordinal());
+                    order.setOrderTimeInForce((byte) TimeInForce.FOK.ordinal());
+                    order.setOrderSide((byte) OrderSide.SELL.ordinal());
+                    order.setOrderType((byte) OrderType.LIMIT.ordinal());
+                    order.setOrderPrice(sellPrice);
+                    order.setOrderSize(askSize);
+                    order.setLeavesQuantity(askSize);
+                    order.setVersion(1);
 
-                if (askSize == null) {
-                    LOGGER.error("Could not find askSize for {}.", userId);
-                    continue;
+                    this.openOrders.put(orderId, order);
+                    this.pendingOrdersByUser.computeIfAbsent(userId, u -> new HashSet<>()).add(orderId);
+                    this.dbAdapter.write(order);
+
+                    LOGGER.info("Sending sell order price {} and quantity {} for user {}.", orderPrice, orderSize, userId);
+
+                    this.apiHandler.submitLimitFok(this, userId, orderId, orderSize, orderPrice, sellPrice, OrderSide.SELL);
                 }
-
-                String orderSize = String.valueOf(askSize);
-                String orderPrice = String.valueOf(sellPrice);
-                Date now = new Date();
-
-                long orderId = IdGenerator.nextOrderTradeId();
-                Order order = new Order();
-                order.setId(orderId);
-                order.setUserId(userId);
-                order.setOrderAction((byte) OrderAction.SUBMIT.ordinal());
-                order.setOrderState((byte) OrderState.SUBMIT.ordinal());
-                order.setCreateTime(now);
-                order.setUpdateTime(now);
-                order.setTradingPair((byte) getTradingPair().ordinal());
-                order.setStrategy((byte) getStrategyType().ordinal());
-                order.setOrderTimeInForce((byte) TimeInForce.FOK.ordinal());
-                order.setOrderSide((byte) OrderSide.SELL.ordinal());
-                order.setOrderType((byte) OrderType.LIMIT.ordinal());
-                order.setOrderPrice(sellPrice);
-                order.setOrderSize(askSize);
-                order.setLeavesQuantity(askSize);
-                order.setVersion(1);
-
-                this.openOrders.put(orderId, order);
-                this.dbAdapter.write(order);
-
-                LOGGER.info("Sending sell order price {} and quantity {} for user {}.", orderPrice, orderSize, userId);
-
-                this.apiHandler.submitLimitFok(this, userId, orderId, orderSize, orderPrice, sellPrice, OrderSide.SELL);
             }
-        }
 
-        iterator = this.buyOrders.entrySet().iterator();
+            for (Map.Entry<Double, Set<Integer>> entry : this.buyOrders.entrySet()) {
+                double buyPrice = entry.getKey();
+                if (buyPrice < askPrice) break;
 
-        while (iterator.hasNext()) {
-            Map.Entry<Double, Set<Integer>> current = iterator.next();
+                String orderPrice = String.valueOf(buyPrice);
+                Set<Integer> userIds = entry.getValue();
 
-            double buyPrice = current.getKey();
-            if (buyPrice < askPrice) break;
+                for (int userId : userIds) {
+                    userIds.remove(userId);
 
-            String orderPrice = String.valueOf(buyPrice);
+                    String orderSize = this.bidSizes.get(userId);
+                    double buySize = this.strategyConfigs.get(userId).getParamIntervalOrderSize();
+                    Date now = new Date();
 
-            for (int userId : current.getValue()) {
-                current.getValue().remove(userId);
+                    long orderId = IdGenerator.nextOrderTradeId();
+                    Order order = new Order();
+                    order.setId(orderId);
+                    order.setUserId(userId);
+                    order.setOrderAction((byte) OrderAction.SUBMIT.ordinal());
+                    order.setOrderState((byte) OrderState.SUBMIT.ordinal());
+                    order.setCreateTime(now);
+                    order.setUpdateTime(now);
+                    order.setTradingPair((byte) getTradingPair().ordinal());
+                    order.setStrategy((byte) getStrategyType().ordinal());
+                    order.setOrderTimeInForce((byte) TimeInForce.FOK.ordinal());
+                    order.setOrderSide((byte) OrderSide.BUY.ordinal());
+                    order.setOrderType((byte) OrderType.LIMIT.ordinal());
+                    order.setOrderPrice(buyPrice);
+                    order.setOrderSize(buySize);
+                    order.setLeavesQuantity(buySize);
+                    order.setVersion(1);
 
-                String orderSize = this.bidSizes.get(userId);
-                double buySize = this.strategyConfigs.get(userId).getParamIntervalOrderSize();
-                Date now = new Date();
+                    this.openOrders.put(orderId, order);
+                    this.pendingOrdersByUser.computeIfAbsent(userId, u -> new HashSet<>()).add(orderId);
+                    this.dbAdapter.write(order);
 
-                long orderId = IdGenerator.nextOrderTradeId();
-                Order order = new Order();
-                order.setId(orderId);
-                order.setUserId(userId);
-                order.setOrderAction((byte) OrderAction.SUBMIT.ordinal());
-                order.setOrderState((byte) OrderState.SUBMIT.ordinal());
-                order.setCreateTime(now);
-                order.setUpdateTime(now);
-                order.setTradingPair((byte) getTradingPair().ordinal());
-                order.setStrategy((byte) getStrategyType().ordinal());
-                order.setOrderTimeInForce((byte) TimeInForce.FOK.ordinal());
-                order.setOrderSide((byte) OrderSide.BUY.ordinal());
-                order.setOrderType((byte) OrderType.LIMIT.ordinal());
-                order.setOrderPrice(buyPrice);
-                order.setOrderSize(buySize);
-                order.setLeavesQuantity(buySize);
-                order.setVersion(1);
+                    LOGGER.info("Sending buy order price {} and quantity {} for user {}.", orderPrice, orderSize, userId);
 
-                this.openOrders.put(orderId, order);
-                this.dbAdapter.write(order);
-
-                LOGGER.info("Sending buy order price {} and quantity {} for user {}.", orderPrice, orderSize, userId);
-
-                this.apiHandler.submitLimitFok(this, userId, orderId, orderSize, orderPrice, buyPrice, OrderSide.BUY);
+                    this.apiHandler.submitLimitFok(this, userId, orderId, orderSize, orderPrice, buyPrice, OrderSide.BUY);
+                }
             }
+
+            timer.expirationTime = this.timeManager.getCurrentTimeMillis() + QUOTE_INTERVAL;
+            scheduleTimer(timer);
+        } else if (timer.timerType == TimerType.HEALTH_CHECK) {
+            for (Map.Entry<Integer, Set<Long>> entry : this.pendingOrdersByUser.entrySet()) {
+                if (entry.getValue().isEmpty()) {
+                    int userId = entry.getKey();
+
+                    StrategyConfig strategyConfig = this.strategyConfigs.get(userId);
+                    if (strategyConfig == null) {
+                        LOGGER.error("No strategy config found during health check.");
+                        return;
+                    }
+
+                    double startPrice = strategyConfig.getParamIntervalStartPrice();
+                    double interval = strategyConfig.getParamIntervalPriceInterval();
+                    double quoteAskPrice = this.quote.getAskPrice();
+                    double newBidPrice = 0;
+
+                    if (startPrice > quoteAskPrice) {
+                        newBidPrice = startPrice - (int) ((startPrice - quoteAskPrice) / interval) * interval;
+                    } else if (startPrice < quoteAskPrice) {
+                        newBidPrice = startPrice + (int) ((quoteAskPrice - startPrice) / interval + 1) * interval;
+                    }
+
+                    if (newBidPrice != 0 && !this.boughtPrices.get(userId).contains(newBidPrice)) {
+                        this.buyOrders.computeIfAbsent(newBidPrice, n -> new HashSet<>()).add(userId);
+                    }
+                }
+            }
+
+            timer.expirationTime = this.timeManager.getCurrentTimeMillis() + HEALTH_CHECK_INTERVAL;
+            scheduleTimer(timer);
         }
     }
 
@@ -275,6 +327,7 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
             trade.setStrategy(order.getStrategy());
             trade.setTradePrice(price);
             trade.setTradeSize(quantity);
+            trade.setTradeNotional(price * quantity);
             trade.setTradingPair(order.getTradingPair());
             trade.setTradeSide(order.getOrderSide());
             trade.setTradeType(order.getOrderType());
@@ -295,10 +348,11 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
         Double askPrice = orderResponse.askPrice;
 
         if (OrderState.values()[order.getOrderState()].isComplete()) {
+            int userId = orderResponse.userId;
+
             this.orderIdToClientOrderId.remove(orderId);
             this.openOrders.remove(orderId);
-
-            int userId = orderResponse.userId;
+            this.pendingOrdersByUser.get(userId).remove(orderId);
 
             if (bidPrice != null) {
                 StrategyConfig strategyConfig = this.strategyConfigs.get(userId);
@@ -306,13 +360,22 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
                 double profitPriceChange = strategyConfig.getParamIntervalProfitPriceChange();
 
                 if (order.getExecutedQuantity() > 0) {
-                    this.boughtPrices.get(userId).add(bidPrice);
+                    Set<Double> boughtPricesForUser = this.boughtPrices.get(userId);
+                    boughtPricesForUser.add(bidPrice);
 
+                    double quoteAskPrice = this.quote.getAskPrice();
                     double newBidPrice = bidPrice - priceInterval;
-                    Set<Integer> userIdsForBidPrice = this.buyOrders.computeIfAbsent(newBidPrice, n -> new HashSet<>());
-                    userIdsForBidPrice.add(userId);
 
-                    LOGGER.info("Preparing a buy order for user {} at price {}.", userId, newBidPrice);
+                    if (quoteAskPrice < newBidPrice) {
+                        newBidPrice = bidPrice - (int) ((bidPrice - quoteAskPrice) / priceInterval) * priceInterval;
+                    }
+
+                    if (!boughtPricesForUser.contains(newBidPrice)) {
+                        Set<Integer> userIdsForBidPrice = this.buyOrders.computeIfAbsent(newBidPrice, n -> new HashSet<>());
+                        userIdsForBidPrice.add(userId);
+
+                        LOGGER.info("Preparing a buy order for user {} at price {}.", userId, newBidPrice);
+                    }
 
                     double newAskPrice = bidPrice + profitPriceChange;
                     Set<Integer> userIdsForAskPrice = this.sellOrders.computeIfAbsent(newAskPrice, n -> new HashSet<>());

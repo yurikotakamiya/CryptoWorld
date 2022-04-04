@@ -30,7 +30,7 @@ public class Order implements IDbEntity {
     @Column(name = "order_type_id")
     private byte orderType;
 
-    @Column(name = "order_time_in_force")
+    @Column(name = "order_time_in_force_id")
     private byte orderTimeInForce;
 
     @Column(name = "order_size")

@@ -5,6 +5,7 @@ import cw.common.md.Exchange;
 import cw.common.md.TradingPair;
 
 public class Timer implements IEvent {
+    public int consumerId;
     public TimerType timerType;
     public long expirationTime;
 
@@ -12,11 +13,23 @@ public class Timer implements IEvent {
     public Exchange exchange;
     public TradingPair tradingPair;
 
-    public Timer(TimerType timerType, long expirationTime, Exchange exchange, TradingPair tradingPair) {
+    public Timer(int consumerId, TimerType timerType, long expirationTime, Exchange exchange, TradingPair tradingPair) {
+        this.consumerId = consumerId;
         this.timerType = timerType;
         this.expirationTime = expirationTime;
 
         this.exchange = exchange;
         this.tradingPair = tradingPair;
+    }
+
+    @Override
+    public String toString() {
+        return "Timer{" +
+                "consumerId=" + consumerId +
+                ", timerType=" + timerType +
+                ", expirationTime=" + expirationTime +
+                ", exchange=" + exchange +
+                ", tradingPair=" + tradingPair +
+                '}';
     }
 }
