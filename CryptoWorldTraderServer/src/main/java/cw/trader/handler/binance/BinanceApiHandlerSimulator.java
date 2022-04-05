@@ -28,7 +28,7 @@ public class BinanceApiHandlerSimulator extends BinanceApiHandler {
 
     private static final double[] RATIOS_1 = new double[]{1};
     private static final double[] RATIOS_2 = new double[]{0.3, 0.7};
-    private static final double[] RATIOS_3 = new double[]{0.2, 0.6, 0.4};
+    private static final double[] RATIOS_3 = new double[]{0.2, 0.6, 0.2};
     private static final double[] RATIOS_4 = new double[]{0.2, 0.25, 0.15, 0.4};
     private static final double[] RATIOS_5 = new double[]{0.2, 0.1, 0.2, 0.3, 0.2};
 

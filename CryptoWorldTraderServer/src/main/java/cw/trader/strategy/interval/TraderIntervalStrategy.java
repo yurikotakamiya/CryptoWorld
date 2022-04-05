@@ -1,9 +1,9 @@
 package cw.trader.strategy.interval;
 
-import com.binance.api.client.domain.TimeInForce;
 import cw.common.config.StrategyType;
 import cw.common.db.mysql.Order;
 import cw.common.db.mysql.StrategyConfig;
+import cw.common.db.mysql.TimeInForce;
 import cw.common.db.mysql.Trade;
 import cw.common.id.IdGenerator;
 import cw.common.md.Exchange;
@@ -163,8 +163,10 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
                 String orderPrice = String.valueOf(buyPrice);
                 Set<Integer> userIds = entry.getValue();
 
-                for (int userId : userIds) {
-                    userIds.remove(userId);
+                Iterator<Integer> iterator = userIds.iterator();
+
+                while (iterator.hasNext()) {
+                    int userId = iterator.next();
 
                     String orderSize = this.bidSizes.get(userId);
                     double buySize = this.strategyConfigs.get(userId).getParamIntervalOrderSize();
