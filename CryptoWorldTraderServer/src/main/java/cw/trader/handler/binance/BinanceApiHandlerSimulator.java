@@ -150,7 +150,7 @@ public class BinanceApiHandlerSimulator extends BinanceApiHandler {
         if (count == RATIOS_1.length) {
             for (int i = 0; i < RATIOS_1.length; i++) {
                 Trade trade = new Trade();
-                trade.setQty(String.valueOf(DoubleRounder.round(orderSize * RATIOS_1[i], 10)));
+                trade.setQty(String.valueOf(DoubleRounder.round(orderSize * RATIOS_1[i], 5)));
                 trade.setPrice(orderPrice);
 
                 list.add(trade);
@@ -158,7 +158,7 @@ public class BinanceApiHandlerSimulator extends BinanceApiHandler {
         } else if (count == RATIOS_2.length) {
             for (int i = 0; i < RATIOS_2.length; i++) {
                 Trade trade = new Trade();
-                trade.setQty(String.valueOf(DoubleRounder.round(orderSize * RATIOS_2[i], 10)));
+                trade.setQty(String.valueOf(DoubleRounder.round(orderSize * RATIOS_2[i], 5)));
                 trade.setPrice(orderPrice);
 
                 list.add(trade);
@@ -166,7 +166,7 @@ public class BinanceApiHandlerSimulator extends BinanceApiHandler {
         } else if (count == RATIOS_3.length) {
             for (int i = 0; i < RATIOS_3.length; i++) {
                 Trade trade = new Trade();
-                trade.setQty(String.valueOf(DoubleRounder.round(orderSize * RATIOS_3[i], 10)));
+                trade.setQty(String.valueOf(DoubleRounder.round(orderSize * RATIOS_3[i], 5)));
                 trade.setPrice(orderPrice);
 
                 list.add(trade);
@@ -174,7 +174,7 @@ public class BinanceApiHandlerSimulator extends BinanceApiHandler {
         } else if (count == RATIOS_4.length) {
             for (int i = 0; i < RATIOS_4.length; i++) {
                 Trade trade = new Trade();
-                trade.setQty(String.valueOf(DoubleRounder.round(orderSize * RATIOS_4[i], 10)));
+                trade.setQty(String.valueOf(DoubleRounder.round(orderSize * RATIOS_4[i], 5)));
                 trade.setPrice(orderPrice);
 
                 list.add(trade);
@@ -182,7 +182,7 @@ public class BinanceApiHandlerSimulator extends BinanceApiHandler {
         } else if (count == RATIOS_5.length) {
             for (int i = 0; i < RATIOS_5.length; i++) {
                 Trade trade = new Trade();
-                trade.setQty(String.valueOf(DoubleRounder.round(orderSize * RATIOS_5[i], 10)));
+                trade.setQty(String.valueOf(DoubleRounder.round(orderSize * RATIOS_5[i], 5)));
                 trade.setPrice(orderPrice);
 
                 list.add(trade);

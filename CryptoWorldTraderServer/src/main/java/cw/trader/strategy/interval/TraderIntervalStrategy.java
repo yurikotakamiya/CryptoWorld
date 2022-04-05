@@ -225,7 +225,7 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
                         newBidPrice = startPrice + (int) ((quoteAskPrice - startPrice) / interval + 1) * interval;
                     }
 
-                    newBidPrice = DoubleRounder.round(newBidPrice, 10);
+                    newBidPrice = DoubleRounder.round(newBidPrice, 5);
 
                     if (newBidPrice != 0 && !this.boughtPrices.get(userId).contains(newBidPrice)) {
                         this.buyOrders.computeIfAbsent(newBidPrice, n -> new HashSet<>()).add(userId);
@@ -320,8 +320,8 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
                 order.setOrderState((byte) OrderState.PARTIAL_EXEC.ordinal());
             }
 
-            order.setLeavesQuantity(DoubleRounder.round(order.getLeavesQuantity() - quantity, 10));
-            order.setExecutedQuantity(DoubleRounder.round(order.getExecutedQuantity() + quantity, 10));
+            order.setLeavesQuantity(Math.max(0, DoubleRounder.round(order.getLeavesQuantity() - quantity, 5)));
+            order.setExecutedQuantity(DoubleRounder.round(order.getExecutedQuantity() + quantity, 5));
             order.setUpdateTime(new Date());
             order.setVersion(order.getVersion() + 1);
             this.dbAdapter.write(order);
@@ -333,7 +333,7 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
             trade.setStrategy(order.getStrategy());
             trade.setTradePrice(price);
             trade.setTradeSize(quantity);
-            trade.setTradeNotional(DoubleRounder.round(price * quantity, 10));
+            trade.setTradeNotional(DoubleRounder.round(price * quantity, 5));
             trade.setTradingPair(order.getTradingPair());
             trade.setTradeSide(order.getOrderSide());
             trade.setTradeType(order.getOrderType());
@@ -376,7 +376,7 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
                         newBidPrice = bidPrice - (int) ((bidPrice - quoteAskPrice) / priceInterval) * priceInterval;
                     }
 
-                    newBidPrice = DoubleRounder.round(newBidPrice, 10);
+                    newBidPrice = DoubleRounder.round(newBidPrice, 5);
 
                     if (!boughtPricesForUser.contains(newBidPrice)) {
                         Set<Integer> userIdsForBidPrice = this.buyOrders.computeIfAbsent(newBidPrice, n -> new HashSet<>());
@@ -385,7 +385,7 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
                         LOGGER.info("Preparing a buy order for user {} at price {}.", userId, newBidPrice);
                     }
 
-                    double newAskPrice = DoubleRounder.round(bidPrice + profitPriceChange, 10);
+                    double newAskPrice = DoubleRounder.round(bidPrice + profitPriceChange, 5);
                     Set<Integer> userIdsForAskPrice = this.sellOrders.computeIfAbsent(newAskPrice, n -> new HashSet<>());
                     userIdsForAskPrice.add(userId);
 
