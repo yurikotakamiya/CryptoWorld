@@ -17,7 +17,7 @@ public class MdWebSocketClient extends WebSocketClient {
 
     @Override
     public void onOpen(ServerHandshake serverHandshake) {
-        LOGGER.info("Connection opened.");
+        LOGGER.info("{} connection opened.", this.webSocketMarketDataHandler.getExchange());
         this.webSocketMarketDataHandler.subscribe();
     }
 
@@ -28,7 +28,7 @@ public class MdWebSocketClient extends WebSocketClient {
 
     @Override
     public void onClose(int i, String s, boolean b) {
-        LOGGER.info("Connection closed.");
+        LOGGER.info("{} connection closed.", this.webSocketMarketDataHandler.getExchange());
     }
 
     @Override
