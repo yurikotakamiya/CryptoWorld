@@ -167,6 +167,7 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
 
                 while (iterator.hasNext()) {
                     int userId = iterator.next();
+                    iterator.remove();
 
                     String orderSize = this.bidSizes.get(userId);
                     double buySize = this.strategyConfigs.get(userId).getParamIntervalOrderSize();

@@ -3,5 +3,6 @@ package cw.common.order;
 public enum OrderSide {
     NONE,
     BUY,
-    SELL
+    SELL,
+    SELL_SHORT
 }
