@@ -75,7 +75,7 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
     }
 
     private void scheduleTimers() {
-        if (getInterestedMarketDataTypes().contains(TimerType.QUOTE)) {
+        if (getInterestedMarketDataTypes().contains(MarketDataType.QUOTE)) {
             long expirationTime = this.timeManager.getCurrentTimeMillis() + QUOTE_INTERVAL;
             scheduleTimer(new Timer(this.id, TimerType.QUOTE, expirationTime, exchange, tradingPair));
 
