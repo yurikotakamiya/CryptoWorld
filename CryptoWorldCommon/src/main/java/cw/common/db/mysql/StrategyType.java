@@ -1,4 +1,4 @@
-package cw.common.config;
+package cw.common.db.mysql;
 
 public enum StrategyType {
     NONE,

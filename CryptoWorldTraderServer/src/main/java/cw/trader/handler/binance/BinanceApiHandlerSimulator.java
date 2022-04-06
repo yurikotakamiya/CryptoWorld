@@ -7,7 +7,7 @@ import com.binance.api.client.domain.account.NewOrderResponse;
 import com.binance.api.client.domain.account.Trade;
 import cw.common.db.mysql.ApiKey;
 import cw.common.id.IdGenerator;
-import cw.common.order.OrderSide;
+import cw.common.db.mysql.OrderSide;
 import cw.trader.strategy.AbstractTraderStrategy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

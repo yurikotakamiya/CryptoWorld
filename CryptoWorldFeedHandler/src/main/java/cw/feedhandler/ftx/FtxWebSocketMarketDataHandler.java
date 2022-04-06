@@ -1,8 +1,8 @@
 package cw.feedhandler.ftx;
 
 import cw.common.json.JsonParser;
-import cw.common.md.Exchange;
-import cw.common.md.TradingPair;
+import cw.common.db.mysql.Exchange;
+import cw.common.db.mysql.TradingPair;
 import cw.feedhandler.AbstractWebSocketMarketDataHandler;
 import cw.common.env.EnvUtil;
 import cw.common.json.FlyweightStringBuilder;

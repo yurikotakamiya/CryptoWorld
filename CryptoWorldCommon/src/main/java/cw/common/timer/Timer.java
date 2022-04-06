@@ -1,8 +1,8 @@
 package cw.common.timer;
 
 import cw.common.event.IEvent;
-import cw.common.md.Exchange;
-import cw.common.md.TradingPair;
+import cw.common.db.mysql.Exchange;
+import cw.common.db.mysql.TradingPair;
 
 public class Timer implements IEvent {
     public int consumerId;

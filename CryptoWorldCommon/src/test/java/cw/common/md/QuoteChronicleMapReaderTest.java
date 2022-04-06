@@ -1,5 +1,6 @@
 package cw.common.md;
 
+import cw.common.db.mysql.TradingPair;
 import net.openhft.chronicle.map.ChronicleMap;
 import net.openhft.chronicle.map.ChronicleMapBuilder;
 

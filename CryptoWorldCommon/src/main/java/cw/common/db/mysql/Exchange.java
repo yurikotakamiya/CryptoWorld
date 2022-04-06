@@ -1,4 +1,4 @@
-package cw.common.md;
+package cw.common.db.mysql;
 
 public enum Exchange {
     NONE("none"),

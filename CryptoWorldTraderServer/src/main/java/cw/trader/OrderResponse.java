@@ -1,8 +1,8 @@
 package cw.trader;
 
 import cw.common.event.IEvent;
-import cw.common.order.OrderAction;
-import cw.common.order.OrderState;
+import cw.common.db.mysql.OrderAction;
+import cw.common.db.mysql.OrderState;
 
 import java.util.LinkedList;
 import java.util.List;

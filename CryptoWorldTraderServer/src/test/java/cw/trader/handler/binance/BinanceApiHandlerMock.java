@@ -3,7 +3,7 @@ package cw.trader.handler.binance;
 import com.binance.api.client.BinanceApiAsyncRestClient;
 import com.binance.api.client.domain.account.NewOrderResponse;
 import cw.common.db.mysql.ApiKey;
-import cw.common.order.OrderSide;
+import cw.common.db.mysql.OrderSide;
 import cw.trader.OrderInfo;
 import cw.trader.strategy.AbstractTraderStrategy;
 

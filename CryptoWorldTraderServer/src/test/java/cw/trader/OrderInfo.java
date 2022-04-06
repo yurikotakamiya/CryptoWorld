@@ -1,6 +1,6 @@
 package cw.trader;
 
-import cw.common.order.OrderSide;
+import cw.common.db.mysql.OrderSide;
 
 public class OrderInfo {
     public int userId;

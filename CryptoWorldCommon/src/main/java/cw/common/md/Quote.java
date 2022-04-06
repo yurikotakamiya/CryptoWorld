@@ -1,5 +1,6 @@
 package cw.common.md;
 
+import cw.common.db.mysql.TradingPair;
 import net.openhft.chronicle.bytes.Byteable;
 import net.openhft.chronicle.bytes.BytesStore;
 import net.openhft.chronicle.values.NotNull;

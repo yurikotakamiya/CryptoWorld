@@ -1,4 +1,4 @@
-package cw.common.md;
+package cw.common.db.mysql;
 
 import java.util.Collections;
 import java.util.HashMap;

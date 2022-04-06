@@ -1,6 +1,6 @@
 package cw.common.db.mysql;
 
-public enum TimeInForce {
+public enum OrderTimeInForce {
     NONE,
     GTC,
     IOC,

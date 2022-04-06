@@ -1,20 +1,16 @@
 package cw.trader.strategy.interval;
 
 import com.binance.api.client.domain.OrderStatus;
-import com.binance.api.client.domain.TimeInForce;
 import com.binance.api.client.domain.account.NewOrderResponse;
-import cw.common.config.StrategyType;
-import cw.common.db.mysql.ApiKey;
-import cw.common.db.mysql.Order;
-import cw.common.db.mysql.StrategyConfig;
-import cw.common.db.mysql.Trade;
-import cw.common.md.Exchange;
+import cw.common.db.mysql.StrategyType;
+import cw.common.db.mysql.*;
+import cw.common.db.mysql.Exchange;
 import cw.common.md.Quote;
-import cw.common.md.TradingPair;
-import cw.common.order.OrderAction;
-import cw.common.order.OrderSide;
-import cw.common.order.OrderState;
-import cw.common.order.OrderType;
+import cw.common.db.mysql.TradingPair;
+import cw.common.db.mysql.OrderAction;
+import cw.common.db.mysql.OrderSide;
+import cw.common.db.mysql.OrderState;
+import cw.common.db.mysql.OrderType;
 import cw.common.timer.TimeManager;
 import cw.common.timer.Timer;
 import cw.common.timer.TimerType;
@@ -120,7 +116,7 @@ public class TraderIntervalStrategyTest {
         Assertions.assertEquals(StrategyType.INTERVAL.ordinal(), order.getStrategy());
         Assertions.assertEquals(TradingPair.BTCUSDT.ordinal(), order.getTradingPair());
         Assertions.assertEquals(OrderType.LIMIT.ordinal(), order.getOrderType());
-        Assertions.assertEquals(TimeInForce.FOK.ordinal(), order.getOrderTimeInForce());
+        Assertions.assertEquals(OrderTimeInForce.FOK.ordinal(), order.getOrderTimeInForce());
 
         return order;
     }

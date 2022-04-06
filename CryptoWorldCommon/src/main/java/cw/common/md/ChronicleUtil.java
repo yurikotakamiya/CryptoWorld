@@ -1,5 +1,7 @@
 package cw.common.md;
 
+import cw.common.db.mysql.Exchange;
+import cw.common.db.mysql.TradingPair;
 import cw.common.env.EnvUtil;
 import cwp.db.dynamodb.DynamoDbUtil;
 import net.openhft.chronicle.map.ChronicleMap;

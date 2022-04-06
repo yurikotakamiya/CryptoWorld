@@ -1,12 +1,12 @@
 package cw.trader.strategy;
 
-import cw.common.config.StrategyType;
+import cw.common.db.mysql.StrategyType;
 import cw.common.db.mysql.StrategyConfig;
 import cw.common.id.IdGenerator;
-import cw.common.md.Exchange;
+import cw.common.db.mysql.Exchange;
 import cw.common.md.MarketDataType;
 import cw.common.md.Quote;
-import cw.common.md.TradingPair;
+import cw.common.db.mysql.TradingPair;
 import cw.common.timer.ITimeManager;
 import cw.common.timer.Timer;
 import cw.trader.OrderResponse;

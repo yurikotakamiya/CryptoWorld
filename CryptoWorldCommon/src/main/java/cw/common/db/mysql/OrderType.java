@@ -1,4 +1,4 @@
-package cw.common.order;
+package cw.common.db.mysql;
 
 public enum OrderType {
     NONE,

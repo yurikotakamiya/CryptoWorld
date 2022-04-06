@@ -1,19 +1,19 @@
 package cw.trader.strategy.interval;
 
-import cw.common.config.StrategyType;
+import cw.common.db.mysql.StrategyType;
 import cw.common.db.mysql.Order;
 import cw.common.db.mysql.StrategyConfig;
-import cw.common.db.mysql.TimeInForce;
+import cw.common.db.mysql.OrderTimeInForce;
 import cw.common.db.mysql.Trade;
 import cw.common.id.IdGenerator;
-import cw.common.md.Exchange;
+import cw.common.db.mysql.Exchange;
 import cw.common.md.MarketDataType;
 import cw.common.md.Quote;
-import cw.common.md.TradingPair;
-import cw.common.order.OrderAction;
-import cw.common.order.OrderSide;
-import cw.common.order.OrderState;
-import cw.common.order.OrderType;
+import cw.common.db.mysql.TradingPair;
+import cw.common.db.mysql.OrderAction;
+import cw.common.db.mysql.OrderSide;
+import cw.common.db.mysql.OrderState;
+import cw.common.db.mysql.OrderType;
 import cw.common.timer.ITimeManager;
 import cw.common.timer.TimeManager;
 import cw.common.timer.Timer;
@@ -138,7 +138,7 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
                     order.setUpdateTime(now);
                     order.setTradingPair((byte) getTradingPair().ordinal());
                     order.setStrategy((byte) getStrategyType().ordinal());
-                    order.setOrderTimeInForce((byte) TimeInForce.FOK.ordinal());
+                    order.setOrderTimeInForce((byte) OrderTimeInForce.FOK.ordinal());
                     order.setOrderSide((byte) OrderSide.SELL.ordinal());
                     order.setOrderType((byte) OrderType.LIMIT.ordinal());
                     order.setOrderPrice(sellPrice);
@@ -183,7 +183,7 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
                     order.setUpdateTime(now);
                     order.setTradingPair((byte) getTradingPair().ordinal());
                     order.setStrategy((byte) getStrategyType().ordinal());
-                    order.setOrderTimeInForce((byte) TimeInForce.FOK.ordinal());
+                    order.setOrderTimeInForce((byte) OrderTimeInForce.FOK.ordinal());
                     order.setOrderSide((byte) OrderSide.BUY.ordinal());
                     order.setOrderType((byte) OrderType.LIMIT.ordinal());
                     order.setOrderPrice(buyPrice);

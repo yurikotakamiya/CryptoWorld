@@ -1,8 +1,8 @@
 package cw.trader.handler.ftx;
 
 import cw.common.db.mysql.ApiKey;
-import cw.common.md.Exchange;
-import cw.common.order.OrderSide;
+import cw.common.db.mysql.Exchange;
+import cw.common.db.mysql.OrderSide;
 import cw.trader.ExchangeApiHandler;
 import cw.trader.strategy.AbstractTraderStrategy;
 import org.apache.logging.log4j.LogManager;

@@ -1,8 +1,8 @@
 package cw.feedhandler;
 
-import cw.common.md.Exchange;
+import cw.common.db.mysql.Exchange;
 import cw.common.md.Quote;
-import cw.common.md.TradingPair;
+import cw.common.db.mysql.TradingPair;
 import net.openhft.chronicle.map.ChronicleMap;
 import org.apache.logging.log4j.Logger;
 import org.java_websocket.client.WebSocketClient;

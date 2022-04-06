@@ -2,8 +2,8 @@ package cw.trader;
 
 import cw.common.db.mysql.ApiKey;
 import cw.common.db.mysql.StrategyConfig;
-import cw.common.md.Exchange;
-import cw.common.order.OrderSide;
+import cw.common.db.mysql.Exchange;
+import cw.common.db.mysql.OrderSide;
 import cw.trader.strategy.AbstractTraderStrategy;
 
 import java.util.function.Consumer;
