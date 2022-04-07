@@ -32,8 +32,8 @@ import org.jetbrains.annotations.TestOnly;
 import java.util.*;
 import java.util.function.Consumer;
 
-public class TraderIntervalStrategy extends AbstractTraderStrategy {
-    private static final Logger LOGGER = LogManager.getLogger(TraderIntervalStrategy.class.getSimpleName());
+public class IntervalTraderStrategy extends AbstractTraderStrategy {
+    private static final Logger LOGGER = LogManager.getLogger(IntervalTraderStrategy.class.getSimpleName());
     private static final long QUOTE_INTERVAL = 500;
     private static final long HEALTH_CHECK_INTERVAL = 5 * TimeManager.ONE_SEC;
 
@@ -50,7 +50,7 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
     private final Map<Integer, Set<Double>> boughtPrices;
     private final Map<Integer, Map<Double, Double>> askToBidPrice;
 
-    public TraderIntervalStrategy(ChronicleMap<TradingPair, Quote> chronicleMap, Quote quote, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, ExchangeApiHandler apiHandler, TradingPair tradingPair) throws Exception {
+    public IntervalTraderStrategy(ChronicleMap<TradingPair, Quote> chronicleMap, Quote quote, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, ExchangeApiHandler apiHandler, TradingPair tradingPair) throws Exception {
         super(chronicleMap, quote, dbAdapter, timeManager, timerScheduler, exchange, tradingPair);
 
         this.apiHandler = apiHandler;

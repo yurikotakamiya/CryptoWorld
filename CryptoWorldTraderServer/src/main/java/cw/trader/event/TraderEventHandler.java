@@ -13,7 +13,7 @@ import cw.common.timer.Timer;
 import cw.trader.ExchangeApiHandler;
 import cw.trader.OrderResponse;
 import cw.trader.strategy.AbstractTraderStrategy;
-import cw.trader.strategy.interval.TraderIntervalStrategy;
+import cw.trader.strategy.interval.IntervalTraderStrategy;
 import cwp.db.mysql.MySqlAdapter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -96,7 +96,7 @@ public class TraderEventHandler implements IEventHandler {
 
         if (traderStrategy == null) {
             if (strategy == StrategyType.INTERVAL) {
-                traderStrategy = new TraderIntervalStrategy(ChronicleUtil.getQuoteMap(exchange, tradingPair), ChronicleUtil.getQuote(), this.dbAdapter, this.timeManager, this.timerConsumer, exchange, this.exchangeApiHandlers.get(exchange), tradingPair);
+                traderStrategy = new IntervalTraderStrategy(ChronicleUtil.getQuoteMap(exchange, tradingPair), ChronicleUtil.getQuote(), this.dbAdapter, this.timeManager, this.timerConsumer, exchange, this.exchangeApiHandlers.get(exchange), tradingPair);
             }
 
             strategiesByType.put(strategy, traderStrategy);

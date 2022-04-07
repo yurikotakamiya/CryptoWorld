@@ -28,12 +28,12 @@ import org.mockito.Mockito;
 import java.util.LinkedList;
 import java.util.List;
 
-public class TraderIntervalStrategyTest {
+public class IntervalTraderStrategyTest {
     private ChronicleMap<TradingPair, Quote> chronicleMap;
     private Quote quote;
     private DbAdapterMock dbAdapter;
     private BinanceApiHandlerMock apiHandler;
-    private TraderIntervalStrategy strategy;
+    private IntervalTraderStrategy strategy;
 
     private Timer quoteTimer;
     private Timer healthCheckTimer;
@@ -45,7 +45,7 @@ public class TraderIntervalStrategyTest {
         this.quote = Mockito.mock(Quote.class);
         this.dbAdapter = new DbAdapterMock();
         this.apiHandler = new BinanceApiHandlerMock();
-        this.strategy = new TraderIntervalStrategy(this.chronicleMap, this.quote, this.dbAdapter, new TimeManager(), t -> {
+        this.strategy = new IntervalTraderStrategy(this.chronicleMap, this.quote, this.dbAdapter, new TimeManager(), t -> {
         }, Exchange.BINANCE, this.apiHandler, TradingPair.BTCUSDT);
 
         Mockito.when(this.quote.getBidPrice()).thenReturn(45000d);
