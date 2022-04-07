@@ -16,7 +16,7 @@ import java.util.function.Consumer;
 
 public class RsiMarketMonitor extends AbstractMarketMonitor {
     private static final Logger LOGGER = LogManager.getLogger(RsiMarketMonitor.class.getSimpleName());
-    private static final int CANDLESTICK_INTERVAL = 500;
+    private static final int CANDLESTICK_INTERVAL = 5_000;
 
     private final Map<Integer, MonitorConfig> monitorConfigs;
     private final Map<CandlestickInterval, TreeMap<Double, Set<Integer>>> lowThresholds;
