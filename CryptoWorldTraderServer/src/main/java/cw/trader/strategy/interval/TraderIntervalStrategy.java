@@ -77,13 +77,13 @@ public class TraderIntervalStrategy extends AbstractTraderStrategy {
     private void scheduleTimers() {
         if (getInterestedMarketDataTypes().contains(MarketDataType.QUOTE)) {
             long expirationTime = this.timeManager.getCurrentTimeMillis() + QUOTE_INTERVAL;
-            scheduleTimer(new Timer(this.id, TimerType.QUOTE, expirationTime, exchange, tradingPair));
+            scheduleTimer(new Timer(this.id, TimerType.QUOTE, expirationTime, this.exchange, this.tradingPair));
 
             LOGGER.info("Scheduling {} timer with {} delay for {}.", TimerType.QUOTE, QUOTE_INTERVAL, getStrategyType());
         }
 
         long expirationTime = this.timeManager.getCurrentTimeMillis() + HEALTH_CHECK_INTERVAL;
-        scheduleTimer(new Timer(this.id, TimerType.HEALTH_CHECK, expirationTime, exchange, tradingPair));
+        scheduleTimer(new Timer(this.id, TimerType.HEALTH_CHECK, expirationTime, this.exchange, this.tradingPair));
 
         LOGGER.info("Scheduling {} timer with {} delay for {}.", TimerType.HEALTH_CHECK, HEALTH_CHECK_INTERVAL, getStrategyType());
     }
