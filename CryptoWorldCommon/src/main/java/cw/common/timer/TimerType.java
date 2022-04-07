@@ -3,5 +3,6 @@ package cw.common.timer;
 public enum TimerType {
     NONE,
     QUOTE,
-    HEALTH_CHECK
+    HEALTH_CHECK,
+    CANDLESTICK
 }

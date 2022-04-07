@@ -31,7 +31,7 @@ public class FtxWebSocketMarketDataHandler extends AbstractWebSocketMarketDataHa
         this.logger = LogManager.getLogger(FtxWebSocketMarketDataHandler.class.getSimpleName());
         this.uri = new URI(getWebSocketEndpoint());
         this.topicToTradingPair = generateTopicToTradingPair(DynamoDbUtil.getMarketDataTopics(getExchange().getExchangeName()));
-        String marketDataMap = DynamoDbUtil.getMarketDataMap(getExchange().getExchangeName(), EnvUtil.ENV.getEnvName());
+        String marketDataMap = DynamoDbUtil.getMarketDataQuoteMap(getExchange().getExchangeName(), EnvUtil.ENV.getEnvName());
         this.chronicleMap = ChronicleMapBuilder
                 .of(TradingPair.class, Quote.class)
                 .name(marketDataMap)

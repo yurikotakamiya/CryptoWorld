@@ -64,7 +64,8 @@ public class MonitorEventHandler implements IEventHandler {
         AbstractMarketMonitor marketMonitor = monitorsByType.get(monitorType);
 
         if (marketMonitor == null) {
-            marketMonitor = new RsiMarketMonitor(ChronicleUtil.getQuoteMap(exchange, tradingPair), ChronicleUtil.getQuote(), this.dbAdapter, this.timeManager, this.timerConsumer, exchange, tradingPair);
+            CandlestickInterval interval = CandlestickInterval.values()[monitorConfig.getParamRsiTimeInterval()];
+            marketMonitor = new RsiMarketMonitor(ChronicleUtil.getCandlestickMap(exchange, interval, tradingPair), ChronicleUtil.getCandlestick(), this.dbAdapter, this.timeManager, this.timerConsumer, exchange, tradingPair);
 
             monitorsByType.put(monitorType, marketMonitor);
             this.monitorsById.put(marketMonitor.getId(), marketMonitor);

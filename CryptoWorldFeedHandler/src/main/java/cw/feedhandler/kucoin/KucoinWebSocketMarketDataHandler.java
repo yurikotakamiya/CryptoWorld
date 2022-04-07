@@ -38,7 +38,7 @@ public class KucoinWebSocketMarketDataHandler extends AbstractWebSocketMarketDat
         this.logger = LogManager.getLogger(KucoinWebSocketMarketDataHandler.class.getSimpleName());
         this.uri = new URI(getWebSocketEndpoint());
         this.topicToTradingPair = generateTopicToTradingPair(DynamoDbUtil.getMarketDataTopics(getExchange().getExchangeName()));
-        String marketDataMap = DynamoDbUtil.getMarketDataMap(getExchange().getExchangeName(), EnvUtil.ENV.getEnvName());
+        String marketDataMap = DynamoDbUtil.getMarketDataQuoteMap(getExchange().getExchangeName(), EnvUtil.ENV.getEnvName());
         this.chronicleMap = ChronicleMapBuilder
                 .of(TradingPair.class, Quote.class)
                 .name(marketDataMap)

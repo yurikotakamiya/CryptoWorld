@@ -1,10 +1,7 @@
 package cw.monitor.monitor.rsi;
 
-import cw.common.db.mysql.Exchange;
-import cw.common.db.mysql.MonitorConfig;
-import cw.common.db.mysql.MonitorType;
-import cw.common.db.mysql.TradingPair;
-import cw.common.md.Quote;
+import cw.common.db.mysql.*;
+import cw.common.md.Candlestick;
 import cw.common.timer.ITimeManager;
 import cw.common.timer.Timer;
 import cw.common.timer.TimerType;
@@ -19,29 +16,29 @@ import java.util.function.Consumer;
 
 public class RsiMarketMonitor extends AbstractMarketMonitor {
     private static final Logger LOGGER = LogManager.getLogger(RsiMarketMonitor.class.getSimpleName());
-    private static final int QUOTE_INTERVAL = 500;
+    private static final int CANDLESTICK_INTERVAL = 500;
 
     private final Map<Integer, MonitorConfig> monitorConfigs;
-    private final TreeMap<Double, Set<Integer>> lowThresholds;
-    private final TreeMap<Double, Set<Integer>> highThresholds;
+    private final Map<CandlestickInterval, TreeMap<Double, Set<Integer>>> lowThresholds;
+    private final Map<CandlestickInterval, TreeMap<Double, Set<Integer>>> highThresholds;
 
     private double currentRsi;
 
-    public RsiMarketMonitor(ChronicleMap<TradingPair, Quote> chronicleMap, Quote quote, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, TradingPair tradingPair) {
-        super(chronicleMap, quote, dbAdapter, timeManager, timerScheduler, exchange, tradingPair);
+    public RsiMarketMonitor(ChronicleMap<TradingPair, Candlestick> chronicleMap, Candlestick candlestick, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, TradingPair tradingPair) {
+        super(chronicleMap, candlestick, dbAdapter, timeManager, timerScheduler, exchange, tradingPair);
 
         this.monitorConfigs = new HashMap<>();
-        this.lowThresholds = new TreeMap<>();
-        this.highThresholds = new TreeMap<>(Comparator.reverseOrder());
+        this.lowThresholds = new HashMap<>();
+        this.highThresholds = new HashMap<>();
 
-        scheduleQuoteTimer();
+        scheduleCandlestickTimer();
     }
 
-    private void scheduleQuoteTimer() {
-        long expirationTime = this.timeManager.getCurrentTimeMillis() + QUOTE_INTERVAL;
-        scheduleTimer(new Timer(this.id, TimerType.QUOTE, expirationTime, this.exchange, this.tradingPair));
+    private void scheduleCandlestickTimer() {
+        long expirationTime = this.timeManager.getCurrentTimeMillis() + CANDLESTICK_INTERVAL;
+        scheduleTimer(new Timer(this.id, TimerType.CANDLESTICK, expirationTime, this.exchange, this.tradingPair));
 
-        LOGGER.info("Scheduling {} timer with {} delay for {}.", TimerType.QUOTE, QUOTE_INTERVAL, getMonitorType());
+        LOGGER.info("Scheduling {} timer with {} delay for {}.", TimerType.CANDLESTICK, CANDLESTICK_INTERVAL, getMonitorType());
     }
 
     @Override
@@ -51,11 +48,11 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
 
     @Override
     public void onTimerEvent(Timer timer) {
-        if (timer.timerType == TimerType.QUOTE) {
+        if (timer.timerType == TimerType.CANDLESTICK) {
 
 
-            long expirationTime = this.timeManager.getCurrentTimeMillis() + QUOTE_INTERVAL;
-            scheduleTimer(new Timer(this.id, TimerType.QUOTE, expirationTime, this.exchange, this.tradingPair));
+            long expirationTime = this.timeManager.getCurrentTimeMillis() + CANDLESTICK_INTERVAL;
+            scheduleTimer(new Timer(this.id, TimerType.CANDLESTICK, expirationTime, this.exchange, this.tradingPair));
         }
     }
 
@@ -67,6 +64,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
 
         Double lowThreshold = monitorConfig.getParamRsiLowThreshold();
         Double highThreshold = monitorConfig.getParamRsiHighThreshold();
+        CandlestickInterval timeInterval = CandlestickInterval.values()[monitorConfig.getParamRsiTimeInterval()];
 
         if (lowThreshold == null || lowThreshold <= 0 || lowThreshold >= 100) {
             LOGGER.warn("Ignoring {} due to invalid low threshold config.", monitorConfig);
@@ -78,9 +76,14 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
             return;
         }
 
+        if (timeInterval == null) {
+            LOGGER.warn("Ignoring {} due to invalid time interval config.", monitorConfig);
+            return;
+        }
+
         int userId = monitorConfig.getUserId();
         this.monitorConfigs.put(userId, monitorConfig);
-        this.lowThresholds.computeIfAbsent(lowThreshold, l -> new HashSet<>()).add(userId);
-        this.highThresholds.computeIfAbsent(highThreshold, h -> new HashSet<>()).add(userId);
+        this.lowThresholds.computeIfAbsent(timeInterval, t -> new TreeMap<>()).computeIfAbsent(lowThreshold, t -> new HashSet<>()).add(userId);
+        this.highThresholds.computeIfAbsent(timeInterval, t -> new TreeMap<>(Comparator.reverseOrder())).computeIfAbsent(highThreshold, h -> new HashSet<>()).add(userId);
     }
 }

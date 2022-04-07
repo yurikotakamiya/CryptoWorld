@@ -5,7 +5,7 @@ import cw.common.db.mysql.MonitorConfig;
 import cw.common.db.mysql.MonitorType;
 import cw.common.db.mysql.TradingPair;
 import cw.common.id.IdGenerator;
-import cw.common.md.Quote;
+import cw.common.md.Candlestick;
 import cw.common.timer.ITimeManager;
 import cw.common.timer.Timer;
 import cwp.db.IDbAdapter;
@@ -14,8 +14,8 @@ import net.openhft.chronicle.map.ChronicleMap;
 import java.util.function.Consumer;
 
 public abstract class AbstractMarketMonitor {
-    protected final ChronicleMap<TradingPair, Quote> chronicleMap;
-    protected final Quote quote;
+    protected final ChronicleMap<TradingPair, Candlestick> chronicleMap;
+    protected final Candlestick candlestick;
     protected final IDbAdapter dbAdapter;
     protected final ITimeManager timeManager;
     protected final Consumer<Timer> timerScheduler;
@@ -24,9 +24,9 @@ public abstract class AbstractMarketMonitor {
 
     protected final int id;
 
-    public AbstractMarketMonitor(ChronicleMap<TradingPair, Quote> chronicleMap, Quote quote, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, TradingPair tradingPair) {
+    public AbstractMarketMonitor(ChronicleMap<TradingPair, Candlestick> chronicleMap, Candlestick candlestick, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, TradingPair tradingPair) {
         this.chronicleMap = chronicleMap;
-        this.quote = quote;
+        this.candlestick = candlestick;
         this.dbAdapter = dbAdapter;
         this.timeManager = timeManager;
         this.timerScheduler = timerScheduler;

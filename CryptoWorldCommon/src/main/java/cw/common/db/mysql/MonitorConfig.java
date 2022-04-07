@@ -30,6 +30,8 @@ public class MonitorConfig implements IEvent, IDbEntity {
     private Double paramRsiLowThreshold;
     @Column(name = "param_rsi_high_threshold")
     private Double paramRsiHighThreshold;
+    @Column(name = "param_rsi_time_interval")
+    private byte paramRsiTimeInterval;
 
     public MonitorConfig() {
     }
@@ -82,6 +84,14 @@ public class MonitorConfig implements IEvent, IDbEntity {
         this.paramRsiHighThreshold = paramRsiHighThreshold;
     }
 
+    public byte getParamRsiTimeInterval() {
+        return this.paramRsiTimeInterval;
+    }
+
+    public void setParamRsiTimeInterval(byte paramRsiTimeInterval) {
+        this.paramRsiTimeInterval = paramRsiTimeInterval;
+    }
+
     @Override
     public String toString() {
         return "MonitorConfig{" +
@@ -91,6 +101,7 @@ public class MonitorConfig implements IEvent, IDbEntity {
                 ", monitor=" + monitor +
                 ", paramRsiLowThreshold=" + paramRsiLowThreshold +
                 ", paramRsiHighThreshold=" + paramRsiHighThreshold +
+                ", paramRsiTimeInterval=" + paramRsiTimeInterval +
                 '}';
     }
 
