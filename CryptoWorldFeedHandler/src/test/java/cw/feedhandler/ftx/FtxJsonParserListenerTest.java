@@ -5,14 +5,14 @@ import cw.common.json.JsonParser;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class FtxQuoteJsonParserListenerTest {
+public class FtxJsonParserListenerTest {
     @Test
     void testFields() {
         String s1 = "{\"channel\": \"ticker\", \"market\": \"ETH-PERP\", \"type\": \"update\", \"data\": {\"bid\": 3774.1, \"ask\": 3774.2, \"bidSize\": 39.709, \"askSize\": 4.631, \"last\": 3774.1, \"time\": 1640718434.1286812}}";
         String s2 = "{\"channel\": \"ticker\", \"market\": \"ETH-PERP\", \"type\": \"update\", \"data\": {\"bid\": 3774.2, \"ask\": 3774.3, \"bidSize\": 4.197, \"askSize\": 0.617, \"last\": 3774.3, \"time\": 1640718434.2122264}}";
 
         JsonParser parser = new JsonParser(new FlyweightStringBuilder());
-        FtxQuoteJsonParserListener listener = new FtxQuoteJsonParserListener();
+        FtxJsonParserListener listener = new FtxJsonParserListener();
         parser.setListener(listener);
 
         parser.parse(s1);

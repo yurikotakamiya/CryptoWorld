@@ -1,28 +1,29 @@
 package cw.feedhandler.ftx;
 
-import cw.common.json.JsonParser;
 import cw.common.db.mysql.Exchange;
 import cw.common.db.mysql.TradingPair;
-import cw.feedhandler.AbstractWebSocketMarketDataHandler;
-import cw.common.env.EnvUtil;
 import cw.common.json.FlyweightStringBuilder;
-import cw.common.md.Quote;
+import cw.common.json.JsonParser;
+import cw.common.md.ChronicleUtil;
+import cw.feedhandler.AbstractWebSocketMarketDataHandler;
 import cwp.db.dynamodb.DynamoDbUtil;
-import net.openhft.chronicle.map.ChronicleMapBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
 
-import java.io.File;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.Map;
 
 public class FtxWebSocketMarketDataHandler extends AbstractWebSocketMarketDataHandler {
     private static final String SUBSCRIBE_PREFIX = "{\"op\": \"subscribe\", \"channel\": \"ticker\", \"market\": \"";
-    private static final String SUBSCRIBE_SUFFIX = "\", \"id\": 1}";
+    private static final String SUBSCRIBE_SUFFIX_PRE_ID = "\", \"id\":";
+    private static final String SUBSCRIBE_SUFFIX_POST_ID = "}";
     private static final StringBuilder SUBSCRIBE_STRING_BUILDER = new StringBuilder(SUBSCRIBE_PREFIX);
 
+    private static int REQUEST_ID = 1;
+
     private final ObjectLongHashMap<String> marketToTime;
-    private final FtxQuoteJsonParserListener quoteListener;
+    private final FtxJsonParserListener responseListener;
     private final JsonParser jsonParser;
 
     public FtxWebSocketMarketDataHandler() throws Exception {
@@ -30,19 +31,14 @@ public class FtxWebSocketMarketDataHandler extends AbstractWebSocketMarketDataHa
 
         this.logger = LogManager.getLogger(FtxWebSocketMarketDataHandler.class.getSimpleName());
         this.uri = new URI(getWebSocketEndpoint());
-        this.topicToTradingPair = generateTopicToTradingPair(DynamoDbUtil.getMarketDataQuoteTopics(getExchange().getExchangeName()));
-        String marketDataMap = DynamoDbUtil.getMarketDataQuoteMap(getExchange().getExchangeName(), EnvUtil.ENV.getEnvName());
-        this.chronicleMap = ChronicleMapBuilder
-                .of(TradingPair.class, Quote.class)
-                .name(marketDataMap)
-                .averageKey(TradingPair.ETHPERP)
-                .entries(10)
-                .createPersistedTo(new File(marketDataMap));
+        this.quoteTopicToTradingPair = generateTopicToTradingPair(DynamoDbUtil.getMarketDataQuoteTopics(getExchange().getExchangeName()));
+        this.quoteMap = ChronicleUtil.getQuoteMap(getExchange(), TradingPair.BTCUSDT);
+        this.candlestickMaps = new HashMap<>();
 
         this.marketToTime = new ObjectLongHashMap<>();
-        this.quoteListener = new FtxQuoteJsonParserListener();
+        this.responseListener = new FtxJsonParserListener();
         this.jsonParser = new JsonParser(new FlyweightStringBuilder());
-        this.jsonParser.setListener(this.quoteListener);
+        this.jsonParser.setListener(this.responseListener);
 
         validate();
     }
@@ -64,15 +60,19 @@ public class FtxWebSocketMarketDataHandler extends AbstractWebSocketMarketDataHa
 
     @Override
     protected void subscribe() {
-        for (String topic : this.topicToTradingPair.keySet()) {
+        for (String topic : this.quoteTopicToTradingPair.keySet()) {
             SUBSCRIBE_STRING_BUILDER.append(topic);
-            SUBSCRIBE_STRING_BUILDER.append(SUBSCRIBE_SUFFIX);
+            SUBSCRIBE_STRING_BUILDER.append(SUBSCRIBE_SUFFIX_PRE_ID);
+            SUBSCRIBE_STRING_BUILDER.append(REQUEST_ID++);
+            SUBSCRIBE_STRING_BUILDER.append(SUBSCRIBE_SUFFIX_POST_ID);
 
             String request = SUBSCRIBE_STRING_BUILDER.toString();
             this.webSocketClient.send(request);
             SUBSCRIBE_STRING_BUILDER.setLength(SUBSCRIBE_PREFIX.length());
 
             this.logger.info("Subscribed to {}.", request);
+
+            throttleRequest();
         }
     }
 
@@ -81,22 +81,22 @@ public class FtxWebSocketMarketDataHandler extends AbstractWebSocketMarketDataHa
         this.jsonParser.parse(message);
         this.jsonParser.eoj();
 
-        String market = this.quoteListener.market;
+        String market = this.responseListener.market;
         long time = this.marketToTime.get(market);
 
-        if (this.quoteListener.time > time) {
-            this.marketToTime.put(market, this.quoteListener.time);
+        if (this.responseListener.time > time) {
+            this.marketToTime.put(market, this.responseListener.time);
 
-            TradingPair tradingPair = this.topicToTradingPair.get(market);
+            TradingPair tradingPair = this.quoteTopicToTradingPair.get(market);
             if (tradingPair == null) return;
 
-            this.quoteNativeReference.setTradingPair(tradingPair);
-            this.quoteNativeReference.setBidPrice(this.quoteListener.bidPrice);
-            this.quoteNativeReference.setBidSize(this.quoteListener.bidSize);
-            this.quoteNativeReference.setAskPrice(this.quoteListener.askPrice);
-            this.quoteNativeReference.setAskSize(this.quoteListener.askSize);
+            this.quote.setTradingPair(tradingPair);
+            this.quote.setBidPrice(this.responseListener.bidPrice);
+            this.quote.setBidSize(this.responseListener.bidSize);
+            this.quote.setAskPrice(this.responseListener.askPrice);
+            this.quote.setAskSize(this.responseListener.askSize);
 
-            this.chronicleMap.put(tradingPair, this.quoteNativeReference);
+            this.quoteMap.put(tradingPair, this.quote);
         }
     }
 }

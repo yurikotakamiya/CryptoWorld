@@ -16,4 +16,20 @@ public interface Candlestick extends Byteable {
     CandlestickInterval getCandlestickInterval();
 
     void setCandlestickInterval(CandlestickInterval candlestickInterval);
+
+    long getOpenTime();
+
+    void setOpenTime(long openTime);
+
+    long getCloseTime();
+
+    void setCloseTime(long closeTime);
+
+    double getOpenPrice();
+
+    void setOpenPrice(double openPrice);
+
+    double getClosePrice();
+
+    void setClosePrice(double closePrice);
 }

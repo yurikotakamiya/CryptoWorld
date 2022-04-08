@@ -1,8 +1,9 @@
 package cw.common.db.mysql;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public class MonitorConfigId {
+public class MonitorConfigId implements Serializable {
     private int userId;
     private byte exchange;
     private byte tradingPair;

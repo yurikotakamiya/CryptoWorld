@@ -3,7 +3,7 @@ package cw.feedhandler.kucoin;
 import cw.common.json.JsonNumber;
 import cw.common.json.JsonParserListenerAdaptor;
 
-public class KucoinQuoteJsonParserListener extends JsonParserListenerAdaptor {
+public class KucoinJsonParserListener extends JsonParserListenerAdaptor {
     private static final String BID = "bestBid";
     private static final String ASK = "bestAsk";
     private static final String BID_SIZE = "bestBidSize";

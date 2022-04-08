@@ -1,6 +1,7 @@
 package cw.feedhandler;
 
 import cw.common.db.mysql.Exchange;
+import cw.common.db.mysql.HibernateUtil;
 import cw.common.db.mysql.MonitorConfig;
 import cw.common.db.mysql.StrategyConfig;
 import cw.feedhandler.binance.BinanceWebSocketMarketDataHandler;
@@ -30,11 +31,16 @@ public class FeedHandlerServer {
     private List<AbstractWebSocketMarketDataHandler> webSocketMarketDataHandlers;
 
     private FeedHandlerServer() throws Exception {
-        this.dbAdapter = MySqlAdapter.getINSTANCE();
+        this.dbAdapter = getMySqlAdapter();
         this.interestedMarketData = new HashSet<>();
 
         loadConfigs();
         generateMarketDataHandlers();
+    }
+
+    private MySqlAdapter getMySqlAdapter() throws Exception {
+        HibernateUtil.setHibernateMapping();
+        return MySqlAdapter.getINSTANCE();
     }
 
     private void loadConfigs() {

@@ -3,7 +3,7 @@ package cw.feedhandler.ftx;
 import cw.common.json.JsonNumber;
 import cw.common.json.JsonParserListenerAdaptor;
 
-public class FtxQuoteJsonParserListener extends JsonParserListenerAdaptor {
+public class FtxJsonParserListener extends JsonParserListenerAdaptor {
     private static final String MARKET = "market";
     private static final String BID = "bid";
     private static final String BID_SIZE = "bidSize";

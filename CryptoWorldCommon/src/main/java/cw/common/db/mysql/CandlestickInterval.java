@@ -1,5 +1,8 @@
 package cw.common.db.mysql;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public enum CandlestickInterval {
     NONE("NONE"),
     ONE_MINUTE("1m"),
@@ -17,6 +20,16 @@ public enum CandlestickInterval {
     THREE_DAILY("3d"),
     WEEKLY("1w"),
     MONTHLY("1M");
+
+    public static final Map<String, CandlestickInterval> INTERVALS_BY_DESCRIPTION;
+
+    static {
+        INTERVALS_BY_DESCRIPTION = new HashMap<>();
+
+        for (CandlestickInterval interval : CandlestickInterval.values()) {
+            INTERVALS_BY_DESCRIPTION.put(interval.interval, interval);
+        }
+    }
 
     private String interval;
 
