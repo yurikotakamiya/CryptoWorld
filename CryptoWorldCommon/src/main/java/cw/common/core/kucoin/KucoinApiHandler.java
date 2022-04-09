@@ -1,10 +1,10 @@
-package cw.trader.handler.kucoin;
+package cw.common.core.kucoin;
 
+import cw.common.core.ExchangeApiHandler;
+import cw.common.core.ITraderStrategy;
 import cw.common.db.mysql.ApiKey;
 import cw.common.db.mysql.Exchange;
 import cw.common.db.mysql.OrderSide;
-import cw.trader.ExchangeApiHandler;
-import cw.trader.strategy.AbstractTraderStrategy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,6 +22,6 @@ public class KucoinApiHandler extends ExchangeApiHandler {
     }
 
     @Override
-    public void submitLimitFok(AbstractTraderStrategy strategy, int userId, long orderId, String orderSize, String orderPrice, double orderPriceDouble, OrderSide orderSide) {
+    public void submitLimitFok(ITraderStrategy strategy, int userId, long orderId, String orderSize, String orderPrice, double orderPriceDouble, OrderSide orderSide) {
     }
 }

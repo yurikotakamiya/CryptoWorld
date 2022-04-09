@@ -1,5 +1,6 @@
 package cw.monitor.event;
 
+import cw.common.core.ExchangeApiHandler;
 import cw.common.db.mysql.*;
 import cw.common.event.IEvent;
 import cw.common.event.IEventHandler;
@@ -19,13 +20,15 @@ import java.util.function.Consumer;
 public class MonitorEventHandler implements IEventHandler {
     private static final Logger LOGGER = LogManager.getLogger(MonitorEventHandler.class.getSimpleName());
 
+    private final Map<Exchange, ExchangeApiHandler> exchangeApiHandlers;
     private final Map<TradingPair, Map<Exchange, Map<MonitorType, AbstractMarketMonitor>>> monitors;
     private final Map<Integer, AbstractMarketMonitor> monitorsById;
     private final MySqlAdapter dbAdapter;
     private final ITimeManager timeManager;
     private final Consumer<Timer> timerConsumer;
 
-    public MonitorEventHandler(MySqlAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerConsumer) {
+    public MonitorEventHandler(Map<Exchange, ExchangeApiHandler> exchangeApiHandlers, MySqlAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerConsumer) {
+        this.exchangeApiHandlers = exchangeApiHandlers;
         this.monitors = new HashMap<>();
         this.monitorsById = new HashMap<>();
         this.dbAdapter = dbAdapter;
@@ -65,7 +68,7 @@ public class MonitorEventHandler implements IEventHandler {
 
         if (marketMonitor == null) {
             CandlestickInterval interval = CandlestickInterval.values()[monitorConfig.getParamRsiTimeInterval()];
-            marketMonitor = new RsiMarketMonitor(ChronicleUtil.getCandlestickMap(exchange, interval, tradingPair), ChronicleUtil.getCandlestick(), this.dbAdapter, this.timeManager, this.timerConsumer, exchange, tradingPair);
+            marketMonitor = new RsiMarketMonitor(ChronicleUtil.getCandlestickMap(exchange, interval, tradingPair), ChronicleUtil.getCandlestick(), this.dbAdapter, this.timeManager, this.timerConsumer, exchange, this.exchangeApiHandlers.get(exchange), tradingPair);
 
             monitorsByType.put(monitorType, marketMonitor);
             this.monitorsById.put(marketMonitor.getId(), marketMonitor);

@@ -2,10 +2,11 @@ package cw.trader.handler.binance;
 
 import com.binance.api.client.BinanceApiAsyncRestClient;
 import com.binance.api.client.domain.account.NewOrderResponse;
+import cw.common.core.ITraderStrategy;
+import cw.common.core.binance.BinanceApiHandler;
 import cw.common.db.mysql.ApiKey;
 import cw.common.db.mysql.OrderSide;
 import cw.trader.OrderInfo;
-import cw.trader.strategy.AbstractTraderStrategy;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -24,7 +25,7 @@ public class BinanceApiHandlerMock extends BinanceApiHandler {
     }
 
     @Override
-    public void submitLimitFok(AbstractTraderStrategy strategy, int userId, long orderId, String orderSize, String orderPrice, double orderPriceDouble, OrderSide orderSide) {
+    public void submitLimitFok(ITraderStrategy strategy, int userId, long orderId, String orderSize, String orderPrice, double orderPriceDouble, OrderSide orderSide) {
         super.submitLimitFok(strategy, userId, orderId, orderSize, orderPrice, orderPriceDouble, orderSide);
 
         OrderInfo orderInfo = new OrderInfo();

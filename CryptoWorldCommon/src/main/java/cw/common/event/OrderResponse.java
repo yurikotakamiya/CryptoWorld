@@ -1,6 +1,5 @@
-package cw.trader;
+package cw.common.event;
 
-import cw.common.event.IEvent;
 import cw.common.db.mysql.OrderAction;
 import cw.common.db.mysql.OrderState;
 

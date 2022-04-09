@@ -68,6 +68,13 @@
             <version>1.0.3</version>
         </dependency>
 
+        <!-- Binance exchange-->
+        <dependency>
+            <groupId>com.binance.api</groupId>
+            <artifactId>binance-api-client</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
         <!-- Unit test-->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

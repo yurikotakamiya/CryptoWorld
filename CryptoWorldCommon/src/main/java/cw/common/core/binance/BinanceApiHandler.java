@@ -1,4 +1,4 @@
-package cw.trader.handler.binance;
+package cw.common.core.binance;
 
 import com.binance.api.client.BinanceApiAsyncRestClient;
 import com.binance.api.client.BinanceApiClientFactory;
@@ -7,14 +7,10 @@ import com.binance.api.client.domain.TimeInForce;
 import com.binance.api.client.domain.account.NewOrder;
 import com.binance.api.client.domain.account.NewOrderResponse;
 import com.binance.api.client.domain.account.Trade;
-import cw.common.db.mysql.ApiKey;
-import cw.common.db.mysql.Exchange;
-import cw.common.db.mysql.OrderAction;
-import cw.common.db.mysql.OrderSide;
-import cw.common.db.mysql.OrderState;
-import cw.trader.ExchangeApiHandler;
-import cw.trader.OrderResponse;
-import cw.trader.strategy.AbstractTraderStrategy;
+import cw.common.core.ExchangeApiHandler;
+import cw.common.core.ITraderStrategy;
+import cw.common.db.mysql.*;
+import cw.common.event.OrderResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -30,7 +26,7 @@ public class BinanceApiHandler extends ExchangeApiHandler {
         this.asyncRestClients = new HashMap<>();
     }
 
-    public void handleNewOrderResponse(NewOrderResponse newOrderResponse, AbstractTraderStrategy strategy, int userId, long orderId, double orderPrice, OrderSide orderSide) {
+    public void handleNewOrderResponse(NewOrderResponse newOrderResponse, ITraderStrategy strategy, int userId, long orderId, double orderPrice, OrderSide orderSide) {
         strategy.updateOrderClientOrderId(orderId, newOrderResponse.getClientOrderId());
 
         OrderResponse orderResponse = new OrderResponse();
@@ -91,7 +87,7 @@ public class BinanceApiHandler extends ExchangeApiHandler {
     }
 
     @Override
-    public void submitLimitFok(AbstractTraderStrategy strategy, int userId, long orderId, String orderSize, String orderPrice, double orderPriceDouble, OrderSide orderSide) {
+    public void submitLimitFok(ITraderStrategy strategy, int userId, long orderId, String orderSize, String orderPrice, double orderPriceDouble, OrderSide orderSide) {
         BinanceApiAsyncRestClient asyncRestClient = this.asyncRestClients.get(userId);
 
         if (asyncRestClient == null) {

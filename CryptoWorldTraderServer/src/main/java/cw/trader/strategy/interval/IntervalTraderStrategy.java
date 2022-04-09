@@ -5,6 +5,7 @@ import cw.common.db.mysql.Order;
 import cw.common.db.mysql.StrategyConfig;
 import cw.common.db.mysql.OrderTimeInForce;
 import cw.common.db.mysql.Trade;
+import cw.common.event.IEvent;
 import cw.common.id.IdGenerator;
 import cw.common.db.mysql.Exchange;
 import cw.common.md.MarketDataType;
@@ -18,8 +19,8 @@ import cw.common.timer.ITimeManager;
 import cw.common.timer.TimeManager;
 import cw.common.timer.Timer;
 import cw.common.timer.TimerType;
-import cw.trader.ExchangeApiHandler;
-import cw.trader.OrderResponse;
+import cw.common.core.ExchangeApiHandler;
+import cw.common.event.OrderResponse;
 import cw.trader.strategy.AbstractTraderStrategy;
 import cwp.db.IDbAdapter;
 import edu.emory.mathcs.backport.java.util.Collections;
@@ -37,8 +38,6 @@ public class IntervalTraderStrategy extends AbstractTraderStrategy {
     private static final long QUOTE_INTERVAL = 500;
     private static final long HEALTH_CHECK_INTERVAL = 5 * TimeManager.ONE_SEC;
 
-    private final ExchangeApiHandler apiHandler;
-
     private final Map<Integer, StrategyConfig> strategyConfigs;
     private final Map<Integer, String> bidSizes;
     private final Map<Double, Map<Integer, Double>> askSizes;
@@ -51,9 +50,7 @@ public class IntervalTraderStrategy extends AbstractTraderStrategy {
     private final Map<Integer, Map<Double, Double>> askToBidPrice;
 
     public IntervalTraderStrategy(ChronicleMap<TradingPair, Quote> chronicleMap, Quote quote, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, ExchangeApiHandler apiHandler, TradingPair tradingPair) throws Exception {
-        super(chronicleMap, quote, dbAdapter, timeManager, timerScheduler, exchange, tradingPair);
-
-        this.apiHandler = apiHandler;
+        super(chronicleMap, quote, dbAdapter, timeManager, timerScheduler, exchange, apiHandler, tradingPair);
 
         this.strategyConfigs = new HashMap<>();
         this.bidSizes = new HashMap<>();
@@ -286,7 +283,8 @@ public class IntervalTraderStrategy extends AbstractTraderStrategy {
     }
 
     @Override
-    public void onOrderResponse(OrderResponse orderResponse) {
+    public void onOrderResponse(IEvent event) {
+        OrderResponse orderResponse = (OrderResponse) event;
         long orderId = orderResponse.orderId;
         Order order = this.openOrders.get(orderId);
 

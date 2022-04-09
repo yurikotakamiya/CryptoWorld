@@ -1,17 +1,18 @@
 package cw.trader;
 
+import cw.common.core.AbstractServer;
+import cw.common.core.ExchangeApiHandler;
+import cw.common.core.binance.BinanceApiHandler;
+import cw.common.core.ftx.FtxApiHandler;
+import cw.common.core.kucoin.KucoinApiHandler;
 import cw.common.db.mysql.ApiKey;
+import cw.common.db.mysql.Exchange;
 import cw.common.db.mysql.StrategyConfig;
 import cw.common.event.EventQueue;
 import cw.common.event.IEventHandler;
-import cw.common.db.mysql.Exchange;
-import cw.common.server.AbstractServer;
 import cw.common.timer.Timer;
 import cw.common.timer.TimerQueue;
 import cw.trader.event.TraderEventHandler;
-import cw.trader.handler.binance.BinanceApiHandler;
-import cw.trader.handler.ftx.FtxApiHandler;
-import cw.trader.handler.kucoin.KucoinApiHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -34,7 +35,8 @@ public class TraderServer extends AbstractServer {
         loadConfigs();
     }
 
-    private Map<Exchange, ExchangeApiHandler> generateExchangeApiHandlers() {
+    @Override
+    protected Map<Exchange, ExchangeApiHandler> generateExchangeApiHandlers() {
         Map<Exchange, ExchangeApiHandler> map = new HashMap<>();
 
         ExchangeApiHandler handler = new BinanceApiHandler();

@@ -1,5 +1,6 @@
 package cw.monitor.monitor.rsi;
 
+import cw.common.core.ExchangeApiHandler;
 import cw.common.db.mysql.*;
 import cw.common.md.Candlestick;
 import cw.common.timer.ITimeManager;
@@ -17,19 +18,26 @@ import java.util.function.Consumer;
 public class RsiMarketMonitor extends AbstractMarketMonitor {
     private static final Logger LOGGER = LogManager.getLogger(RsiMarketMonitor.class.getSimpleName());
     private static final int CANDLESTICK_INTERVAL = 5_000;
+    private static final int CANDLESTICK_COUNTS = 14;
 
     private final Map<Integer, MonitorConfig> monitorConfigs;
     private final Map<CandlestickInterval, TreeMap<Double, Set<Integer>>> lowThresholds;
     private final Map<CandlestickInterval, TreeMap<Double, Set<Integer>>> highThresholds;
+    private final Map<CandlestickInterval, Long> lastOpenTime;
+    private final Map<CandlestickInterval, Double> averageGains;
+    private final Map<CandlestickInterval, Double> averageLosses;
 
     private double currentRsi;
 
-    public RsiMarketMonitor(ChronicleMap<TradingPair, Candlestick> chronicleMap, Candlestick candlestick, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, TradingPair tradingPair) {
+    public RsiMarketMonitor(ChronicleMap<TradingPair, Candlestick> chronicleMap, Candlestick candlestick, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, ExchangeApiHandler exchangeApiHandler, TradingPair tradingPair) {
         super(chronicleMap, candlestick, dbAdapter, timeManager, timerScheduler, exchange, tradingPair);
 
         this.monitorConfigs = new HashMap<>();
         this.lowThresholds = new HashMap<>();
         this.highThresholds = new HashMap<>();
+        this.lastOpenTime = new HashMap<>();
+        this.averageGains = new HashMap<>();
+        this.averageLosses = new HashMap<>();
 
         scheduleCandlestickTimer();
     }

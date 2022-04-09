@@ -1,14 +1,14 @@
-package cw.trader.handler.binance;
+package cw.common.core.binance;
 
 import com.binance.api.client.BinanceApiAsyncRestClient;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.account.NewOrderResponse;
 import com.binance.api.client.domain.account.Trade;
+import cw.common.core.ITraderStrategy;
 import cw.common.db.mysql.ApiKey;
-import cw.common.id.IdGenerator;
 import cw.common.db.mysql.OrderSide;
-import cw.trader.strategy.AbstractTraderStrategy;
+import cw.common.id.IdGenerator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.decimal4j.util.DoubleRounder;
@@ -50,7 +50,7 @@ public class BinanceApiHandlerSimulator extends BinanceApiHandler {
     }
 
     @Override
-    public void submitLimitFok(AbstractTraderStrategy strategy, int userId, long orderId, String orderSize, String orderPrice, double orderPriceDouble, OrderSide orderSide) {
+    public void submitLimitFok(ITraderStrategy strategy, int userId, long orderId, String orderSize, String orderPrice, double orderPriceDouble, OrderSide orderSide) {
         List<NewOrderResponse> responses = generateNewOrderResponses(Double.parseDouble(orderSize), orderPrice);
 
         for (NewOrderResponse response : responses) {
