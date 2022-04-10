@@ -7,6 +7,7 @@ import cw.common.core.ftx.FtxApiHandler;
 import cw.common.core.kucoin.KucoinApiHandler;
 import cw.common.db.mysql.Exchange;
 import cw.common.db.mysql.MonitorConfig;
+import cw.common.db.mysql.User;
 import cw.common.event.EventQueue;
 import cw.common.event.IEventHandler;
 import cw.common.timer.Timer;
@@ -51,6 +52,7 @@ public class MonitorServer extends AbstractServer {
 
     private void loadConfigs() {
         this.dbAdapter.readAll(MonitorConfig.class).forEach(this.eventQueue::enqueue);
+        this.dbAdapter.readAll(User.class).forEach(this.eventQueue::enqueue);
     }
 
     private void scheduleTimer(Timer timer) {

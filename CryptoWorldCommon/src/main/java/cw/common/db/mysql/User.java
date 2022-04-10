@@ -1,12 +1,13 @@
 package cw.common.db.mysql;
 
+import cw.common.event.IEvent;
 import cwp.db.IDbEntity;
 
 import javax.persistence.*;
 
 @Entity
 @Table(name = "users")
-public class User implements IDbEntity {
+public class User implements IEvent, IDbEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")

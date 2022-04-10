@@ -2,6 +2,7 @@ package cw.common.core.binance;
 
 import com.binance.api.client.BinanceApiAsyncRestClient;
 import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.TimeInForce;
 import com.binance.api.client.domain.account.NewOrder;
@@ -14,8 +15,7 @@ import cw.common.event.OrderResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class BinanceApiHandler extends ExchangeApiHandler {
     private static final Logger LOGGER = LogManager.getLogger(BinanceApiHandler.class.getSimpleName());
@@ -96,5 +96,16 @@ public class BinanceApiHandler extends ExchangeApiHandler {
 
         NewOrder newOrder = NewOrder.limitBuy(strategy.getTradingPair().getExchangeToSymbolMap().get(strategy.getExchange()), TimeInForce.FOK, orderSize, orderPrice);
         asyncRestClient.newOrder(newOrder, r -> handleNewOrderResponse(r, strategy, userId, orderId, orderPriceDouble, orderSide));
+    }
+
+    @Override
+    public Object getHistoricalCandlestickBars(TradingPair tradingPair, CandlestickInterval interval) {
+        BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance(null, null);
+        BinanceApiRestClient restClient = factory.newRestClient();
+
+        String symbol = tradingPair.getExchangeToSymbolMap().get(getExchange());
+        com.binance.api.client.domain.market.CandlestickInterval exchangeInterval = CandlestickInterval.getBinanceCandlestickInterval(interval);
+
+        return restClient.getCandlestickBars(symbol, exchangeInterval, 1000, null, null);
     }
 }

@@ -23,6 +23,7 @@ public class MonitorEventHandler implements IEventHandler {
     private final Map<Exchange, ExchangeApiHandler> exchangeApiHandlers;
     private final Map<TradingPair, Map<Exchange, Map<MonitorType, AbstractMarketMonitor>>> monitors;
     private final Map<Integer, AbstractMarketMonitor> monitorsById;
+    private final Map<Integer, User> users;
     private final MySqlAdapter dbAdapter;
     private final ITimeManager timeManager;
     private final Consumer<Timer> timerConsumer;
@@ -31,6 +32,7 @@ public class MonitorEventHandler implements IEventHandler {
         this.exchangeApiHandlers = exchangeApiHandlers;
         this.monitors = new HashMap<>();
         this.monitorsById = new HashMap<>();
+        this.users = new HashMap<>();
         this.dbAdapter = dbAdapter;
         this.timeManager = timeManager;
         this.timerConsumer = timerConsumer;
@@ -42,6 +44,8 @@ public class MonitorEventHandler implements IEventHandler {
             handleTimer((Timer) event);
         } else if (event instanceof MonitorConfig) {
             handleMonitorConfig((MonitorConfig) event);
+        } else if (event instanceof User) {
+            handleUser((User) event);
         } else {
             LOGGER.error("Received unknown event {}.", event);
         }
@@ -67,8 +71,7 @@ public class MonitorEventHandler implements IEventHandler {
         AbstractMarketMonitor marketMonitor = monitorsByType.get(monitorType);
 
         if (marketMonitor == null) {
-            CandlestickInterval interval = CandlestickInterval.values()[monitorConfig.getParamRsiTimeInterval()];
-            marketMonitor = new RsiMarketMonitor(ChronicleUtil.getCandlestickMap(exchange, interval, tradingPair), ChronicleUtil.getCandlestick(), this.dbAdapter, this.timeManager, this.timerConsumer, exchange, this.exchangeApiHandlers.get(exchange), tradingPair);
+            marketMonitor = new RsiMarketMonitor(ChronicleUtil.getCandlestick(), this.dbAdapter, this.timeManager, this.timerConsumer, exchange, this.exchangeApiHandlers.get(exchange), tradingPair);
 
             monitorsByType.put(monitorType, marketMonitor);
             this.monitorsById.put(marketMonitor.getId(), marketMonitor);
@@ -77,5 +80,11 @@ public class MonitorEventHandler implements IEventHandler {
         }
 
         marketMonitor.onMonitorConfig(monitorConfig);
+    }
+
+    private void handleUser(User user) {
+        this.users.put(user.getId(), user);
+
+        LOGGER.info("Added new {}.", user);
     }
 }

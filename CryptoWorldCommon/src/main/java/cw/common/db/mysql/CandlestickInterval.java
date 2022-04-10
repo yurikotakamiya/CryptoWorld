@@ -40,4 +40,11 @@ public enum CandlestickInterval {
     public String getInterval() {
         return this.interval;
     }
+
+    public static com.binance.api.client.domain.market.CandlestickInterval getBinanceCandlestickInterval(CandlestickInterval interval) {
+        for (com.binance.api.client.domain.market.CandlestickInterval binanceInterval : com.binance.api.client.domain.market.CandlestickInterval.values()) {
+            if (binanceInterval.getIntervalId().equals(interval.interval)) return binanceInterval;
+        }
+        return null;
+    }
 }

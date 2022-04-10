@@ -3,41 +3,49 @@ package cw.monitor.monitor.rsi;
 import cw.common.core.ExchangeApiHandler;
 import cw.common.db.mysql.*;
 import cw.common.md.Candlestick;
+import cw.common.md.ChronicleUtil;
 import cw.common.timer.ITimeManager;
 import cw.common.timer.Timer;
 import cw.common.timer.TimerType;
 import cw.monitor.monitor.AbstractMarketMonitor;
 import cwp.db.IDbAdapter;
+import gnu.trove.map.TObjectDoubleMap;
+import gnu.trove.map.TObjectLongMap;
+import gnu.trove.map.hash.TObjectDoubleHashMap;
+import gnu.trove.map.hash.TObjectLongHashMap;
 import net.openhft.chronicle.map.ChronicleMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.TestOnly;
 
 import java.util.*;
 import java.util.function.Consumer;
 
 public class RsiMarketMonitor extends AbstractMarketMonitor {
     private static final Logger LOGGER = LogManager.getLogger(RsiMarketMonitor.class.getSimpleName());
-    private static final int CANDLESTICK_INTERVAL = 5_000;
-    private static final int CANDLESTICK_COUNTS = 14;
+    private static final int CANDLESTICK_INTERVAL = 2_000;
+    private static final int CANDLESTICK_LIMIT = 14;
 
     private final Map<Integer, MonitorConfig> monitorConfigs;
+    private final Set<CandlestickInterval> intervals;
     private final Map<CandlestickInterval, TreeMap<Double, Set<Integer>>> lowThresholds;
     private final Map<CandlestickInterval, TreeMap<Double, Set<Integer>>> highThresholds;
-    private final Map<CandlestickInterval, Long> lastOpenTime;
-    private final Map<CandlestickInterval, Double> averageGains;
-    private final Map<CandlestickInterval, Double> averageLosses;
+    private final TObjectLongMap<CandlestickInterval> lastOpens;
+    private final TObjectDoubleMap<CandlestickInterval> lastPriceChanges;
+    private final TObjectDoubleMap<CandlestickInterval> averageGains;
+    private final TObjectDoubleMap<CandlestickInterval> averageLosses;
 
-    private double currentRsi;
-
-    public RsiMarketMonitor(ChronicleMap<TradingPair, Candlestick> chronicleMap, Candlestick candlestick, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, ExchangeApiHandler exchangeApiHandler, TradingPair tradingPair) {
-        super(chronicleMap, candlestick, dbAdapter, timeManager, timerScheduler, exchange, tradingPair);
+    public RsiMarketMonitor(Candlestick candlestick, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, ExchangeApiHandler exchangeApiHandler, TradingPair tradingPair) {
+        super(new HashMap<>(), candlestick, dbAdapter, timeManager, timerScheduler, exchange, exchangeApiHandler, tradingPair);
 
         this.monitorConfigs = new HashMap<>();
+        this.intervals = new HashSet<>();
         this.lowThresholds = new HashMap<>();
         this.highThresholds = new HashMap<>();
-        this.lastOpenTime = new HashMap<>();
-        this.averageGains = new HashMap<>();
-        this.averageLosses = new HashMap<>();
+        this.lastOpens = new TObjectLongHashMap<>();
+        this.lastPriceChanges = new TObjectDoubleHashMap<>();
+        this.averageGains = new TObjectDoubleHashMap<>();
+        this.averageLosses = new TObjectDoubleHashMap<>();
 
         scheduleCandlestickTimer();
     }
@@ -49,6 +57,55 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
         LOGGER.info("Scheduling {} timer with {} delay for {}.", TimerType.CANDLESTICK, CANDLESTICK_INTERVAL, getMonitorType());
     }
 
+    private ChronicleMap<TradingPair, Candlestick> getCandlestickMap(CandlestickInterval interval) {
+        try {
+            return ChronicleUtil.getCandlestickMap(this.exchange, interval, this.tradingPair);
+        } catch (Exception e) {
+            LOGGER.error("Error while generating candlestick chronicle map for {} {} {}.", this.exchange, this.tradingPair, interval, e);
+        }
+        return null;
+    }
+
+    private void handleCandlestick(CandlestickInterval interval, long openTime, double openPrice, double closePrice) {
+        if (openPrice == 0 || closePrice == 0) return;
+
+        long lastOpen = this.lastOpens.get(interval);
+        double lastPriceChange = this.lastPriceChanges.get(interval);
+        double averageGain = this.averageGains.get(interval);
+        double averageLoss = this.averageLosses.get(interval);
+
+        if (lastOpen < openTime) {
+            if (lastPriceChange == 0) {
+                lastPriceChange = closePrice - openPrice;
+                this.lastPriceChanges.put(interval, lastPriceChange);
+            } else {
+                averageGain = (averageGain * (CANDLESTICK_LIMIT - 1) + ((lastPriceChange > 0) ? lastPriceChange : 0)) / CANDLESTICK_LIMIT;
+                averageLoss = (averageLoss * (CANDLESTICK_LIMIT - 1) + ((lastPriceChange < 0) ? lastPriceChange : 0)) / CANDLESTICK_LIMIT;
+
+                this.averageGains.put(interval, averageGain);
+                this.averageLosses.put(interval, averageLoss);
+            }
+
+            this.lastOpens.put(interval, openTime);
+        }
+
+        double priceChange = closePrice - openPrice;
+        double newAverageGain = (averageGain * (CANDLESTICK_LIMIT - 1) + ((priceChange > 0) ? priceChange : 0)) / CANDLESTICK_LIMIT;
+        double newAverageLoss = (averageLoss * (CANDLESTICK_LIMIT - 1) + ((priceChange < 0) ? priceChange : 0)) / CANDLESTICK_LIMIT;
+
+        this.lastPriceChanges.put(interval, priceChange);
+
+        double rsi = calculate(newAverageGain, newAverageLoss);
+        System.out.println(rsi);
+
+        // TODO - handle notificaitons
+    }
+
+    private double calculate(double averageGain, double averageLoss) {
+        double relativeStrength = averageGain / -averageLoss;
+        return 100 - 100 / (1 + relativeStrength);
+    }
+
     @Override
     public MonitorType getMonitorType() {
         return MonitorType.RSI;
@@ -57,7 +114,21 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
     @Override
     public void onTimerEvent(Timer timer) {
         if (timer.timerType == TimerType.CANDLESTICK) {
+            for (CandlestickInterval interval : this.intervals) {
+                ChronicleMap<TradingPair, Candlestick> chronicleMap = this.chronicleMaps.computeIfAbsent(interval, this::getCandlestickMap);
 
+                if (chronicleMap == null) {
+                    LOGGER.error("Chronicle map not found for {}.", interval);
+                    continue;
+                }
+
+                chronicleMap.getUsing(this.tradingPair, this.candlestick);
+                long openTime = this.candlestick.getOpenTime();
+                double openPrice = this.candlestick.getOpenPrice();
+                double closePrice = this.candlestick.getClosePrice();
+
+                handleCandlestick(interval, openTime, openPrice, closePrice);
+            }
 
             long expirationTime = this.timeManager.getCurrentTimeMillis() + CANDLESTICK_INTERVAL;
             scheduleTimer(new Timer(this.id, TimerType.CANDLESTICK, expirationTime, this.exchange, this.tradingPair));
@@ -72,7 +143,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
 
         Double lowThreshold = monitorConfig.getParamRsiLowThreshold();
         Double highThreshold = monitorConfig.getParamRsiHighThreshold();
-        CandlestickInterval timeInterval = CandlestickInterval.values()[monitorConfig.getParamRsiTimeInterval()];
+        CandlestickInterval interval = CandlestickInterval.values()[monitorConfig.getParamRsiTimeInterval()];
 
         if (lowThreshold == null || lowThreshold <= 0 || lowThreshold >= 100) {
             LOGGER.warn("Ignoring {} due to invalid low threshold config.", monitorConfig);
@@ -84,14 +155,50 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
             return;
         }
 
-        if (timeInterval == null) {
+        if (interval == null) {
             LOGGER.warn("Ignoring {} due to invalid time interval config.", monitorConfig);
             return;
         }
 
         int userId = monitorConfig.getUserId();
         this.monitorConfigs.put(userId, monitorConfig);
-        this.lowThresholds.computeIfAbsent(timeInterval, t -> new TreeMap<>()).computeIfAbsent(lowThreshold, t -> new HashSet<>()).add(userId);
-        this.highThresholds.computeIfAbsent(timeInterval, t -> new TreeMap<>(Comparator.reverseOrder())).computeIfAbsent(highThreshold, h -> new HashSet<>()).add(userId);
+        this.lowThresholds.computeIfAbsent(interval, t -> new TreeMap<>()).computeIfAbsent(lowThreshold, t -> new HashSet<>()).add(userId);
+        this.highThresholds.computeIfAbsent(interval, t -> new TreeMap<>(Comparator.reverseOrder())).computeIfAbsent(highThreshold, h -> new HashSet<>()).add(userId);
+
+        if (this.intervals.add(interval)) {
+            List<com.binance.api.client.domain.market.Candlestick> candlesticks = (List<com.binance.api.client.domain.market.Candlestick>) this.exchangeApiHandler.getHistoricalCandlestickBars(this.tradingPair, interval);
+
+            double aggregateGain = 0;
+            double aggregateLoss = 0;
+
+            for (int i = 0; i < candlesticks.size(); i++) {
+                com.binance.api.client.domain.market.Candlestick candlestick = candlesticks.get(i);
+
+                if (i < CANDLESTICK_LIMIT) {
+                    double openPrice = Double.parseDouble(candlestick.getOpen());
+                    double closePrice = Double.parseDouble(candlestick.getClose());
+
+                    double priceChange = closePrice - openPrice;
+                    aggregateGain += (priceChange > 0) ? priceChange : 0;
+                    aggregateLoss += (priceChange < 0) ? priceChange : 0;
+
+                    this.lastOpens.put(interval, candlestick.getOpenTime());
+                    this.averageGains.put(interval, aggregateGain / CANDLESTICK_LIMIT);
+                    this.averageLosses.put(interval, aggregateLoss / CANDLESTICK_LIMIT);
+                } else {
+                    handleCandlestick(interval, candlestick.getOpenTime(), Double.parseDouble(candlestick.getOpen()), Double.parseDouble(candlestick.getClose()));
+                }
+            }
+        }
+    }
+
+    @TestOnly
+    public TObjectDoubleMap<CandlestickInterval> getAverageGains() {
+        return this.averageGains;
+    }
+
+    @TestOnly
+    public TObjectDoubleMap<CandlestickInterval> getAverageLosses() {
+        return this.averageLosses;
     }
 }
