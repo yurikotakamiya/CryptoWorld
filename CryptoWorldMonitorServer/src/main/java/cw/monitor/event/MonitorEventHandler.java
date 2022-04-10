@@ -61,7 +61,7 @@ public class MonitorEventHandler implements IEventHandler {
         }
     }
 
-    private void handleMonitorConfig(MonitorConfig monitorConfig) throws Exception {
+    private void handleMonitorConfig(MonitorConfig monitorConfig) {
         Exchange exchange = Exchange.values()[monitorConfig.getExchange()];
         TradingPair tradingPair = TradingPair.values()[monitorConfig.getTradingPair()];
         MonitorType monitorType = MonitorType.values()[monitorConfig.getMonitor()];
@@ -71,7 +71,7 @@ public class MonitorEventHandler implements IEventHandler {
         AbstractMarketMonitor marketMonitor = monitorsByType.get(monitorType);
 
         if (marketMonitor == null) {
-            marketMonitor = new RsiMarketMonitor(ChronicleUtil.getCandlestick(), this.dbAdapter, this.timeManager, this.timerConsumer, exchange, this.exchangeApiHandlers.get(exchange), tradingPair);
+            marketMonitor = new RsiMarketMonitor(ChronicleUtil.getCandlestick(), this.users, this.dbAdapter, this.timeManager, this.timerConsumer, exchange, this.exchangeApiHandlers.get(exchange), tradingPair);
 
             monitorsByType.put(monitorType, marketMonitor);
             this.monitorsById.put(marketMonitor.getId(), marketMonitor);

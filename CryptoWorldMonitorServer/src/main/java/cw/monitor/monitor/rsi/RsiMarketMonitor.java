@@ -9,6 +9,7 @@ import cw.common.timer.Timer;
 import cw.common.timer.TimerType;
 import cw.monitor.monitor.AbstractMarketMonitor;
 import cwp.db.IDbAdapter;
+import cwp.email.EmailUtil;
 import gnu.trove.map.TObjectDoubleMap;
 import gnu.trove.map.TObjectLongMap;
 import gnu.trove.map.hash.TObjectDoubleHashMap;
@@ -25,7 +26,10 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
     private static final Logger LOGGER = LogManager.getLogger(RsiMarketMonitor.class.getSimpleName());
     private static final int CANDLESTICK_INTERVAL = 2_000;
     private static final int CANDLESTICK_LIMIT = 14;
+    private static final StringBuilder EMAIL_SUBJECT = new StringBuilder("RSI monitor ");
+    private static final int EMAIL_SUBJECT_LENGTH = EMAIL_SUBJECT.length();
 
+    private final Map<Integer, User> users;
     private final Map<Integer, MonitorConfig> monitorConfigs;
     private final Set<CandlestickInterval> intervals;
     private final Map<CandlestickInterval, TreeMap<Double, Set<Integer>>> lowThresholds;
@@ -35,8 +39,10 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
     private final TObjectDoubleMap<CandlestickInterval> averageGains;
     private final TObjectDoubleMap<CandlestickInterval> averageLosses;
 
-    public RsiMarketMonitor(Candlestick candlestick, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, ExchangeApiHandler exchangeApiHandler, TradingPair tradingPair) {
+    public RsiMarketMonitor(Candlestick candlestick, Map<Integer, User> users, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, ExchangeApiHandler exchangeApiHandler, TradingPair tradingPair) {
         super(new HashMap<>(), candlestick, dbAdapter, timeManager, timerScheduler, exchange, exchangeApiHandler, tradingPair);
+
+        this.users = users;
 
         this.monitorConfigs = new HashMap<>();
         this.intervals = new HashSet<>();
@@ -96,9 +102,54 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
         this.lastPriceChanges.put(interval, priceChange);
 
         double rsi = calculate(newAverageGain, newAverageLoss);
-        System.out.println(rsi);
 
-        // TODO - handle notificaitons
+        for (Map.Entry<Double, Set<Integer>> entry : this.lowThresholds.get(interval).entrySet()) {
+            double threshold = entry.getKey();
+            if (threshold > rsi) break;
+
+            Set<Integer> userIds = entry.getValue();
+
+            for (int userId : userIds) {
+                User user = this.users.get(userId);
+
+                if (user == null) {
+                    LOGGER.error("Could not retrieve corresponding user for {}.", userId);
+                    continue;
+                }
+
+                try {
+                    EmailUtil.send(user.getEmail(), EMAIL_SUBJECT.append("below ").append(threshold).toString(), null);
+                } catch (Exception e) {
+                    LOGGER.error("Error occurred while sending email.", e);
+                }
+
+                EMAIL_SUBJECT.setLength(EMAIL_SUBJECT_LENGTH);
+            }
+        }
+
+        for (Map.Entry<Double, Set<Integer>> entry : this.highThresholds.get(interval).entrySet()) {
+            double threshold = entry.getKey();
+            if (threshold < rsi) break;
+
+            Set<Integer> userIds = entry.getValue();
+
+            for (int userId : userIds) {
+                User user = this.users.get(userId);
+
+                if (user == null) {
+                    LOGGER.error("Could not retrieve corresponding user for {}.", userId);
+                    continue;
+                }
+
+                try {
+                    EmailUtil.send(user.getEmail(), EMAIL_SUBJECT.append("above ").append(threshold).toString(), null);
+                } catch (Exception e) {
+                    LOGGER.error("Error occurred while sending email.", e);
+                }
+
+                EMAIL_SUBJECT.setLength(EMAIL_SUBJECT_LENGTH);
+            }
+        }
     }
 
     private double calculate(double averageGain, double averageLoss) {

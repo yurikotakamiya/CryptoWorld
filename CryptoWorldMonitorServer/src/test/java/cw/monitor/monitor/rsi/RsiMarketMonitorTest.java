@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -25,7 +26,7 @@ public class RsiMarketMonitorTest {
     void before() {
         this.candlestick = Mockito.mock(Candlestick.class);
         this.apiHandler = new BinanceApiHandlerMock();
-        this.monitor = new RsiMarketMonitor(this.candlestick, null, new TimeManager(), t -> {
+        this.monitor = new RsiMarketMonitor(this.candlestick, new HashMap<>(), null, new TimeManager(), t -> {
         }, Exchange.BINANCE, this.apiHandler, TradingPair.BTCUSDT);
         this.monitorConfig = getMonitorConfig();
 
