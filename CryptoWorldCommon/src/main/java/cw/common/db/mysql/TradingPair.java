@@ -7,10 +7,10 @@ import java.util.Map;
 public enum TradingPair {
     NONE(Collections.emptyMap()),
     BTCUSDT(Map.of(
-            Exchange.BINANCE, "btcusdt",
+            Exchange.BINANCE, "BTCUSDT",
             Exchange.KUCOIN, "BTC-USDT")),
     ETHUSDT(Map.of(
-            Exchange.BINANCE, "ethusdt",
+            Exchange.BINANCE, "ETHUSDT",
             Exchange.KUCOIN, "ETH-USDT")),
     BTCPERP(Map.of(
             Exchange.FTX, "BTC-PERP")),
