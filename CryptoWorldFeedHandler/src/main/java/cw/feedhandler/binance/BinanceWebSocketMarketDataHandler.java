@@ -108,18 +108,12 @@ public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDa
         String stream = this.responseListener.stream.toString();
         long lastUpdateId = this.streamToLastUpdateId.get(stream);
 
-        if (this.responseListener.lastUpdateId >= lastUpdateId) {
-            this.streamToLastUpdateId.put(stream, this.responseListener.lastUpdateId);
+        TradingPair tradingPair = this.quoteTopicToTradingPair.get(stream);
 
-            TradingPair tradingPair = this.quoteTopicToTradingPair.get(stream);
+        if (tradingPair != null) {
+            if (this.responseListener.lastUpdateId > lastUpdateId) {
+                this.streamToLastUpdateId.put(stream, this.responseListener.lastUpdateId);
 
-            if (tradingPair == null) {
-                tradingPair = this.candlestickTopicToTradingPair.get(stream);
-            }
-
-            if (tradingPair == null) return;
-
-            if (this.responseListener.lastUpdateId > 0) {
                 this.quote.setTradingPair(tradingPair);
                 this.quote.setBidPrice(this.responseListener.bidPrice);
                 this.quote.setBidSize(this.responseListener.bidSize);
@@ -127,24 +121,25 @@ public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDa
                 this.quote.setAskSize(this.responseListener.askSize);
 
                 this.quoteMap.put(tradingPair, this.quote);
-            } else {
-                CandlestickInterval candlestickInterval = CandlestickInterval.INTERVALS_BY_DESCRIPTION.get(this.responseListener.interval);
-
-                this.candlestick.setCandlestickInterval(candlestickInterval);
-                this.candlestick.setOpenTime(this.candlestick.getOpenTime());
-                this.candlestick.setCloseTime(this.candlestick.getCloseTime());
-                this.candlestick.setOpenPrice(this.candlestick.getOpenPrice());
-                this.candlestick.setClosePrice(this.candlestick.getClosePrice());
-
-                this.candlestickMaps.computeIfAbsent(candlestickInterval, c -> {
-                    try {
-                        return ChronicleUtil.getCandlestickMap(getExchange(), candlestickInterval, TradingPair.BTCUSDT);
-                    } catch (Exception e) {
-                        this.logger.error("Could not initialize chronicle map for candlesticks.");
-                    }
-                    return null;
-                }).put(tradingPair, this.candlestick);
             }
+        } else if ((tradingPair = this.candlestickTopicToTradingPair.get(stream)) != null) {
+            TradingPair finalTradingPair = tradingPair;
+            CandlestickInterval candlestickInterval = CandlestickInterval.INTERVALS_BY_DESCRIPTION.get(this.responseListener.interval);
+
+            this.candlestick.setCandlestickInterval(candlestickInterval);
+            this.candlestick.setOpenTime(this.responseListener.openTime);
+            this.candlestick.setCloseTime(this.responseListener.closeTime);
+            this.candlestick.setOpenPrice(this.responseListener.openPrice);
+            this.candlestick.setClosePrice(this.responseListener.closePrice);
+
+            this.candlestickMaps.computeIfAbsent(candlestickInterval, c -> {
+                try {
+                    return ChronicleUtil.getCandlestickMap(getExchange(), candlestickInterval, finalTradingPair);
+                } catch (Exception e) {
+                    this.logger.error("Could not initialize chronicle map for candlesticks.");
+                }
+                return null;
+            }).put(tradingPair, this.candlestick);
         }
     }
 }
