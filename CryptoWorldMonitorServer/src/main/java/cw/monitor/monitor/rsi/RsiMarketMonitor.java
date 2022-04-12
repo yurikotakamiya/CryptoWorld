@@ -28,6 +28,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
     private static final int CANDLESTICK_LIMIT = 14;
     private static final StringBuilder EMAIL_SUBJECT = new StringBuilder("RSI monitor ");
     private static final int EMAIL_SUBJECT_LENGTH = EMAIL_SUBJECT.length();
+    private static final String EMAIL_BODY = "";
 
     private final Map<Integer, User> users;
     private final Map<Integer, MonitorConfig> monitorConfigs;
@@ -72,7 +73,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
         return null;
     }
 
-    private void handleCandlestick(CandlestickInterval interval, long openTime, double openPrice, double closePrice) {
+    private void handleCandlestick(CandlestickInterval interval, long openTime, double openPrice, double closePrice, boolean isLoading) {
         if (openPrice == 0 || closePrice == 0) return;
 
         long lastOpen = this.lastOpens.get(interval);
@@ -101,6 +102,8 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
 
         this.lastPriceChanges.put(interval, priceChange);
 
+        if (isLoading) return;
+
         double rsi = calculate(newAverageGain, newAverageLoss);
 
         for (Map.Entry<Double, Set<Integer>> entry : this.lowThresholds.get(interval).entrySet()) {
@@ -118,7 +121,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
                 }
 
                 try {
-                    EmailUtil.send(user.getEmail(), EMAIL_SUBJECT.append("below ").append(threshold).toString(), null);
+                    EmailUtil.send(user.getEmail(), EMAIL_SUBJECT.append("below ").append(threshold).toString(), EMAIL_BODY);
                 } catch (Exception e) {
                     LOGGER.error("Error occurred while sending email.", e);
                 }
@@ -142,7 +145,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
                 }
 
                 try {
-                    EmailUtil.send(user.getEmail(), EMAIL_SUBJECT.append("above ").append(threshold).toString(), null);
+                    EmailUtil.send(user.getEmail(), EMAIL_SUBJECT.append("above ").append(threshold).toString(), EMAIL_BODY);
                 } catch (Exception e) {
                     LOGGER.error("Error occurred while sending email.", e);
                 }
@@ -178,7 +181,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
                 double openPrice = this.candlestick.getOpenPrice();
                 double closePrice = this.candlestick.getClosePrice();
 
-                handleCandlestick(interval, openTime, openPrice, closePrice);
+                handleCandlestick(interval, openTime, openPrice, closePrice, false);
             }
 
             long expirationTime = this.timeManager.getCurrentTimeMillis() + CANDLESTICK_INTERVAL;
@@ -237,7 +240,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
                     this.averageGains.put(interval, aggregateGain / CANDLESTICK_LIMIT);
                     this.averageLosses.put(interval, aggregateLoss / CANDLESTICK_LIMIT);
                 } else {
-                    handleCandlestick(interval, candlestick.getOpenTime(), Double.parseDouble(candlestick.getOpen()), Double.parseDouble(candlestick.getClose()));
+                    handleCandlestick(interval, candlestick.getOpenTime(), Double.parseDouble(candlestick.getOpen()), Double.parseDouble(candlestick.getClose()), true);
                 }
             }
         }
