@@ -61,7 +61,7 @@ public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDa
 
         for (String topic : topics) {
             String symbol = topic.substring(0, topic.indexOf("@"));
-            map.put(topic, TradingPair.EXCHANGE_TO_SYMBOL_TO_TRADING_PAIR.get(getExchange()).get(symbol));
+            map.put(topic, TradingPair.EXCHANGE_TO_SYMBOL_TO_TRADING_PAIR.get(getExchange()).get(symbol.toUpperCase()));
         }
 
         return map;
