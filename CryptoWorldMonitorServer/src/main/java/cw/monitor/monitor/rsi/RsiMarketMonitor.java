@@ -122,6 +122,8 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
 
                 try {
                     EmailUtil.send(user.getEmail(), EMAIL_SUBJECT.append("below ").append(threshold).toString(), EMAIL_BODY);
+
+                    LOGGER.info("Sent notification to {}.", user.getId());
                 } catch (Exception e) {
                     LOGGER.error("Error occurred while sending email.", e);
                 }
@@ -146,6 +148,8 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
 
                 try {
                     EmailUtil.send(user.getEmail(), EMAIL_SUBJECT.append("above ").append(threshold).toString(), EMAIL_BODY);
+
+                    LOGGER.info("Sent notification to {}.", user.getId());
                 } catch (Exception e) {
                     LOGGER.error("Error occurred while sending email.", e);
                 }
