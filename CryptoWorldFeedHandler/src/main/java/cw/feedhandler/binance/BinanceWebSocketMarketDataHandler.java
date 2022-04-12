@@ -123,7 +123,6 @@ public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDa
                 this.quoteMap.put(tradingPair, this.quote);
             }
         } else if ((tradingPair = this.candlestickTopicToTradingPair.get(stream)) != null) {
-            TradingPair finalTradingPair = tradingPair;
             CandlestickInterval candlestickInterval = CandlestickInterval.INTERVALS_BY_DESCRIPTION.get(this.responseListener.interval);
 
             this.candlestick.setCandlestickInterval(candlestickInterval);
@@ -134,7 +133,7 @@ public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDa
 
             this.candlestickMaps.computeIfAbsent(candlestickInterval, c -> {
                 try {
-                    return ChronicleUtil.getCandlestickMap(getExchange(), candlestickInterval, finalTradingPair);
+                    return ChronicleUtil.getCandlestickMap(getExchange(), candlestickInterval, TradingPair.BTCUSDT);
                 } catch (Exception e) {
                     this.logger.error("Could not initialize chronicle map for candlesticks.");
                 }

@@ -108,7 +108,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
 
         for (Map.Entry<Double, Set<Integer>> entry : this.lowThresholds.get(interval).entrySet()) {
             double threshold = entry.getKey();
-            if (threshold > rsi) break;
+            if (threshold < rsi) break;
 
             Set<Integer> userIds = entry.getValue();
 
@@ -134,7 +134,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
 
         for (Map.Entry<Double, Set<Integer>> entry : this.highThresholds.get(interval).entrySet()) {
             double threshold = entry.getKey();
-            if (threshold < rsi) break;
+            if (threshold > rsi) break;
 
             Set<Integer> userIds = entry.getValue();
 
