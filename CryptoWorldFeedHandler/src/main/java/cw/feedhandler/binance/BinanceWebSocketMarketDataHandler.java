@@ -108,7 +108,7 @@ public class BinanceWebSocketMarketDataHandler extends AbstractWebSocketMarketDa
         String stream = this.responseListener.stream.toString();
         long lastUpdateId = this.streamToLastUpdateId.get(stream);
 
-        if (this.responseListener.lastUpdateId > lastUpdateId) {
+        if (this.responseListener.lastUpdateId >= lastUpdateId) {
             this.streamToLastUpdateId.put(stream, this.responseListener.lastUpdateId);
 
             TradingPair tradingPair = this.quoteTopicToTradingPair.get(stream);
