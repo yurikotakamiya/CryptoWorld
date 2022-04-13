@@ -5,6 +5,7 @@ import cw.common.db.mysql.*;
 import cw.common.md.Candlestick;
 import cw.common.md.ChronicleUtil;
 import cw.common.timer.ITimeManager;
+import cw.common.timer.TimeManager;
 import cw.common.timer.Timer;
 import cw.common.timer.TimerType;
 import cw.monitor.monitor.AbstractMarketMonitor;
@@ -26,6 +27,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
     private static final Logger LOGGER = LogManager.getLogger(RsiMarketMonitor.class.getSimpleName());
     private static final int CANDLESTICK_INTERVAL = 2_000;
     private static final int CANDLESTICK_LIMIT = 14;
+    private static final long NOTIFICATION_THROTTLE = 60 * TimeManager.ONE_SEC;
     private static final StringBuilder EMAIL_SUBJECT = new StringBuilder("RSI monitor ");
     private static final int EMAIL_SUBJECT_LENGTH = EMAIL_SUBJECT.length();
     private static final String EMAIL_BODY = "";
@@ -39,6 +41,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
     private final TObjectDoubleMap<CandlestickInterval> lastPriceChanges;
     private final TObjectDoubleMap<CandlestickInterval> averageGains;
     private final TObjectDoubleMap<CandlestickInterval> averageLosses;
+    private final Map<CandlestickInterval, Map<Integer, Long>> lastNotificationTimes;
 
     public RsiMarketMonitor(Candlestick candlestick, Map<Integer, User> users, IDbAdapter dbAdapter, ITimeManager timeManager, Consumer<Timer> timerScheduler, Exchange exchange, ExchangeApiHandler exchangeApiHandler, TradingPair tradingPair) {
         super(new HashMap<>(), candlestick, dbAdapter, timeManager, timerScheduler, exchange, exchangeApiHandler, tradingPair);
@@ -53,6 +56,7 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
         this.lastPriceChanges = new TObjectDoubleHashMap<>();
         this.averageGains = new TObjectDoubleHashMap<>();
         this.averageLosses = new TObjectDoubleHashMap<>();
+        this.lastNotificationTimes = new HashMap<>();
 
         scheduleCandlestickTimer();
     }
@@ -121,9 +125,18 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
                 }
 
                 try {
-                    EmailUtil.send(user.getEmail(), EMAIL_SUBJECT.append("below ").append(threshold).toString(), EMAIL_BODY);
+                    Map<Integer, Long> userToLastNotificationTime = this.lastNotificationTimes.computeIfAbsent(interval, i -> new HashMap<>());
+                    long lastNotificationTime = userToLastNotificationTime.computeIfAbsent(userId, u -> 0L);
+                    long now = this.timeManager.getCurrentTimeMillis();
 
-                    LOGGER.info("Sent notification to {}.", user.getId());
+                    if (now - lastNotificationTime > NOTIFICATION_THROTTLE) {
+                        EmailUtil.send(user.getEmail(), EMAIL_SUBJECT.append("below ").append(threshold).toString(), EMAIL_BODY);
+                        userToLastNotificationTime.put(userId, now);
+
+                        LOGGER.info("Sent notification to {}.", user.getId());
+                    } else {
+                        LOGGER.info("Throttled notification for {}.", user.getId());
+                    }
                 } catch (Exception e) {
                     LOGGER.error("Error occurred while sending email.", e);
                 }
@@ -147,9 +160,18 @@ public class RsiMarketMonitor extends AbstractMarketMonitor {
                 }
 
                 try {
-                    EmailUtil.send(user.getEmail(), EMAIL_SUBJECT.append("above ").append(threshold).toString(), EMAIL_BODY);
+                    Map<Integer, Long> userToLastNotificationTime = this.lastNotificationTimes.computeIfAbsent(interval, i -> new HashMap<>());
+                    long lastNotificationTime = userToLastNotificationTime.computeIfAbsent(userId, u -> 0L);
+                    long now = this.timeManager.getCurrentTimeMillis();
 
-                    LOGGER.info("Sent notification to {}.", user.getId());
+                    if (now - lastNotificationTime > NOTIFICATION_THROTTLE) {
+                        EmailUtil.send(user.getEmail(), EMAIL_SUBJECT.append("above ").append(threshold).toString(), EMAIL_BODY);
+                        userToLastNotificationTime.put(userId, now);
+
+                        LOGGER.info("Sent notification to {}.", user.getId());
+                    } else {
+                        LOGGER.info("Throttled notification for {}.", user.getId());
+                    }
                 } catch (Exception e) {
                     LOGGER.error("Error occurred while sending email.", e);
                 }
