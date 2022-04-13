@@ -108,6 +108,8 @@ public class IntervalTraderStrategy extends AbstractTraderStrategy {
             double bidPrice = this.quote.getBidPrice();
             double askPrice = this.quote.getAskPrice();
 
+            if (bidPrice == 0 || askPrice == 0) return;
+
             for (Map.Entry<Double, Set<Integer>> entry : this.sellOrders.entrySet()) {
                 double sellPrice = entry.getKey();
                 if (sellPrice > bidPrice) break;
